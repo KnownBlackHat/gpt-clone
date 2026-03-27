@@ -3,7 +3,7 @@ import pool from '../db/index.js';
 import { authMiddleware } from '../middleware/auth.js';
 import Groq from 'groq-sdk';
 import axios from 'axios';
-import { createRequire } from 'module';
+import path from 'path';
 const require = createRequire(import.meta.url);
 const pdfModule = require('pdf-parse');
 // This is the modern mehmet-kozan/pdf-parse library which uses a class
@@ -50,7 +50,10 @@ async function parsePdf(base64Data) {
     try {
         const buffer = Buffer.from(base64Data.split(',')[1], 'base64');
         const uint8Array = new Uint8Array(buffer);
-        const instance = new PDFParse(uint8Array);
+        const fontPath = path.join(process.cwd(), 'node_modules', 'pdfjs-dist', 'standard_fonts', '/');
+        const instance = new PDFParse(uint8Array, {
+            standardFontDataUrl: fontPath
+        });
         const text = await instance.getText();
         return text || 'Empty PDF content.';
     } catch (err) {
