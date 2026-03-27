@@ -5,8 +5,8 @@ import Groq from 'groq-sdk';
 import axios from 'axios';
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
-const pdf = require('pdf-parse');
-const pdfParser = typeof pdf === 'function' ? pdf : pdf.default;
+const pdfModule = require('pdf-parse');
+const pdfParser = typeof pdfModule === 'function' ? pdfModule : (typeof pdfModule.default === 'function' ? pdfModule.default : pdfModule);
 import dotenv from 'dotenv';
 
 dotenv.config();
