@@ -162,8 +162,13 @@
 				.filter((m) => m.id !== tempUserMsg.id)
 				.concat([data.userMessage, data.assistantMessage]);
 			scrollToBottom();
-		} catch {
+		} catch (err: any) {
 			messages = messages.filter((m) => m.id !== tempUserMsg.id);
+			if (err.message.includes('413') || err.message.toLowerCase().includes('large')) {
+				errorMessage = "File is too large for the server to process. Please try a smaller file.";
+			} else {
+				errorMessage = err.message || "Failed to send message. Please try again.";
+			}
 		} finally {
 			isLoading = false;
 			isTyping = false;
