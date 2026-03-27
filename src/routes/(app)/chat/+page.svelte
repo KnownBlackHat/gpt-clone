@@ -1,0 +1,420 @@
+<script lang="ts">
+	import { goto } from '$app/navigation';
+	import { api, type Conversation, type Message } from '$lib/api';
+	import {
+		Send,
+		Sparkles,
+		Code,
+		BookOpen,
+		Lightbulb,
+		PenLine,
+		Loader2,
+		ImagePlus,
+		FileText,
+		X,
+		Globe,
+	} from '@lucide/svelte';
+
+	let conversations = $state<Conversation[]>([]);
+	let activeConversationId = $state<string | null>(null);
+	let messages = $state<Message[]>([]);
+	let inputValue = $state('');
+	let isLoading = $state(false);
+	let isTyping = $state(false);
+	let isSearching = $state(false);
+	let messagesContainer: HTMLElement;
+
+	// Multimodal / Document state
+	let imageInput: HTMLInputElement;
+	let docInput: HTMLInputElement;
+	let selectedImage = $state<string | null>(null);
+	let imagePreview = $state<string | null>(null);
+	let selectedDoc = $state<string | null>(null);
+	let docName = $state<string | null>(null);
+
+	const suggestions = [
+		{ icon: Code, text: 'Help me write a Python script', category: 'Coding' },
+		{ icon: BookOpen, text: 'Explain quantum computing', category: 'Research' },
+		{ icon: Lightbulb, text: 'Generate creative ideas for my startup', category: 'Creative' },
+		{ icon: PenLine, text: 'Write a professional email', category: 'Writing' },
+	];
+
+	async function loadConversations() {
+		try {
+			const data = await api.conversations.list();
+			conversations = data.conversations;
+		} catch {
+			// ignore
+		}
+	}
+
+	async function loadMessages(convId: string) {
+		try {
+			const data = await api.messages.list(convId);
+			messages = data.messages;
+			scrollToBottom();
+		} catch {
+			// ignore
+		}
+	}
+
+	async function selectConversation(conv: Conversation) {
+		activeConversationId = conv.id;
+		await loadMessages(conv.id);
+	}
+
+	function scrollToBottom() {
+		setTimeout(() => {
+			if (messagesContainer) {
+				messagesContainer.scrollTop = messagesContainer.scrollHeight;
+			}
+		}, 50);
+	}
+
+	function handleImageClick() {
+		imageInput.click();
+	}
+
+	function handleDocClick() {
+		docInput.click();
+	}
+
+	function handleImageUpload(e: Event) {
+		const file = (e.target as HTMLInputElement).files?.[0];
+		if (!file) return;
+
+		const reader = new FileReader();
+		reader.onload = (e) => {
+			const base64 = e.target?.result as string;
+			selectedImage = base64;
+			imagePreview = base64;
+		};
+		reader.readAsDataURL(file);
+	}
+
+	function handleDocUpload(e: Event) {
+		const file = (e.target as HTMLInputElement).files?.[0];
+		if (!file) return;
+
+		docName = file.name;
+		const reader = new FileReader();
+		reader.onload = (e) => {
+			const base64 = e.target?.result as string;
+			selectedDoc = base64;
+		};
+		reader.readAsDataURL(file);
+	}
+
+	function removeImage() {
+		selectedImage = null;
+		imagePreview = null;
+		if (imageInput) imageInput.value = '';
+	}
+
+	function removeDoc() {
+		selectedDoc = null;
+		docName = null;
+		if (docInput) docInput.value = '';
+	}
+
+	async function handleSend() {
+		if ((!inputValue.trim() && !selectedImage && !selectedDoc) || isLoading) return;
+
+		const content = inputValue.trim();
+		const imageUrl = selectedImage;
+		const docUrl = selectedDoc;
+		const currentDocName = docName;
+		
+		inputValue = '';
+		removeImage();
+		removeDoc();
+
+		// Create conversation if needed
+		if (!activeConversationId) {
+			try {
+				const { conversation } = await api.conversations.create();
+				activeConversationId = conversation.id;
+				conversations = [conversation, ...conversations];
+			} catch {
+				return;
+			}
+		}
+
+		// Optimistically add user message
+		const tempUserMsg: Message = {
+			id: 'temp-' + Date.now(),
+			role: 'user',
+			content: content || (currentDocName ? `Uploaded ${currentDocName}` : 'Sent an attachment'),
+			image_url: imageUrl || undefined,
+			created_at: new Date().toISOString(),
+		};
+		messages = [...messages, tempUserMsg];
+		scrollToBottom();
+
+		isLoading = true;
+		isTyping = true;
+		
+		const lowContent = content.toLowerCase();
+		if (lowContent.includes('search') || lowContent.includes('latest') || lowContent.includes('who is')) {
+			isSearching = true;
+		}
+
+		try {
+			const data = await api.messages.send(activeConversationId!, content, imageUrl || undefined, docUrl || undefined);
+			// Replace temp message and add AI response
+			messages = messages
+				.filter((m) => m.id !== tempUserMsg.id)
+				.concat([data.userMessage, data.assistantMessage]);
+			scrollToBottom();
+			// Refresh conversation list for updated title
+			loadConversations();
+		} catch {
+			messages = messages.filter((m) => m.id !== tempUserMsg.id);
+		} finally {
+			isLoading = false;
+			isTyping = false;
+			isSearching = false;
+		}
+	}
+
+	async function handleSuggestionClick(text: string) {
+		inputValue = text;
+		await handleSend();
+	}
+
+	function handleKeydown(e: KeyboardEvent) {
+		if (e.key === 'Enter' && !e.shiftKey) {
+			e.preventDefault();
+			handleSend();
+		}
+	}
+
+	function formatTime(dateStr: string) {
+		const d = new Date(dateStr);
+		return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+	}
+
+	$effect(() => {
+		loadConversations();
+	});
+</script>
+
+<div class="flex h-full">
+	<!-- Conversation List Sidebar (desktop) -->
+	<aside class="hidden lg:flex flex-col w-72 border-r border-niva-glass-border bg-niva-surface-1/50 shrink-0">
+		<div class="p-4 border-b border-niva-glass-border">
+			<h2 class="text-sm font-semibold text-niva-text font-[Manrope]">Conversations</h2>
+		</div>
+		<div class="flex-1 overflow-y-auto niva-scrollbar p-2 space-y-1">
+			{#if conversations.length === 0}
+				<p class="text-xs text-niva-text-secondary p-3 text-center">No conversations yet</p>
+			{:else}
+				{#each conversations as conv}
+					<button
+						onclick={() => selectConversation(conv)}
+						class="w-full text-left p-3 rounded-xl transition-all duration-200 cursor-pointer group
+							{activeConversationId === conv.id
+								? 'bg-niva-accent/10 border border-niva-accent/20'
+								: 'hover:bg-white/5 border border-transparent'}"
+					>
+						<p class="text-sm font-medium text-niva-text truncate">{conv.title}</p>
+						<p class="text-[11px] text-niva-text-secondary mt-1 truncate">{conv.last_message || 'No messages'}</p>
+					</button>
+				{/each}
+			{/if}
+		</div>
+	</aside>
+
+	<!-- Chat Area -->
+	<div class="flex-1 flex flex-col h-full">
+		<!-- Top Bar -->
+		<header class="h-14 glass-panel-strong flex items-center justify-between px-6 shrink-0">
+			<div class="flex items-center gap-3">
+				<Sparkles size={18} class="text-niva-accent" />
+				<h1 class="text-sm font-semibold text-niva-text font-[Manrope]">
+					{activeConversationId ? 'Chat' : 'New Conversation'}
+				</h1>
+			</div>
+			<div class="flex items-center gap-2">
+				<span class="text-[10px] font-medium px-2 py-1 rounded-full bg-niva-accent/10 text-niva-accent">
+					Niva AI
+				</span>
+			</div>
+		</header>
+
+		<!-- Messages -->
+		<div bind:this={messagesContainer} class="flex-1 overflow-y-auto niva-scrollbar px-4 md:px-8 py-6">
+			{#if messages.length === 0 && !activeConversationId}
+				<!-- Welcome State -->
+				<div class="h-full flex flex-col items-center justify-center max-w-2xl mx-auto">
+					<div class="w-16 h-16 rounded-2xl niva-gradient flex items-center justify-center niva-glow mb-6">
+						<Sparkles size={28} class="text-niva-accent" />
+					</div>
+					<h2 class="text-2xl md:text-3xl font-bold text-niva-text font-[Manrope] text-center mb-2">
+						What can I help you with?
+					</h2>
+					<p class="text-niva-text-secondary text-sm text-center mb-8">
+						Start a conversation or pick a suggestion below
+					</p>
+
+					<div class="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-lg">
+						{#each suggestions as sug}
+							<button
+								onclick={() => handleSuggestionClick(sug.text)}
+								class="p-4 rounded-2xl glass-panel hover:bg-white/8 transition-all duration-200 text-left group cursor-pointer"
+							>
+								<div class="flex items-center gap-3 mb-2">
+									<div class="w-8 h-8 rounded-lg bg-niva-accent/10 flex items-center justify-center">
+										<sug.icon size={14} class="text-niva-accent" />
+									</div>
+									<span class="text-[10px] font-medium text-niva-accent uppercase tracking-wider">{sug.category}</span>
+								</div>
+								<p class="text-sm text-niva-text group-hover:text-white transition-colors">{sug.text}</p>
+							</button>
+						{/each}
+					</div>
+				</div>
+			{:else}
+				<!-- Message List -->
+				<div class="max-w-3xl mx-auto space-y-6">
+					{#each messages as msg}
+						<div class="flex gap-3 {msg.role === 'user' ? 'justify-end' : 'justify-start'}">
+							{#if msg.role === 'assistant'}
+								<div class="w-8 h-8 rounded-xl niva-gradient flex items-center justify-center shrink-0 mt-1">
+									<Sparkles size={14} class="text-niva-accent" />
+								</div>
+							{/if}
+							<div
+								class="max-w-[80%] rounded-2xl px-4 py-3 {msg.role === 'user'
+									? 'bg-niva-accent/15 border border-niva-accent/20 text-niva-text'
+									: 'glass-panel text-niva-text'}"
+							>
+								{#if msg.image_url}
+									<div class="mb-3 rounded-xl overflow-hidden border border-white/10">
+										<img src={msg.image_url} alt="Attached input" class="max-w-full h-auto object-contain max-h-64" />
+									</div>
+								{/if}
+								{#if msg.content}
+									<p class="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+								{/if}
+								<span class="text-[10px] text-niva-text-secondary mt-2 block">{formatTime(msg.created_at)}</span>
+							</div>
+						</div>
+					{/each}
+
+					{#if isSearching}
+						<div class="flex gap-3 items-center text-niva-accent animate-pulse px-11">
+							<Globe size={14} />
+							<span class="text-xs font-medium">Niva is searching the web...</span>
+						</div>
+					{/if}
+
+					{#if isTyping}
+						<div class="flex gap-3 items-start">
+							<div class="w-8 h-8 rounded-xl niva-gradient flex items-center justify-center shrink-0">
+								<Sparkles size={14} class="text-niva-accent" />
+							</div>
+							<div class="glass-panel rounded-2xl px-4 py-3">
+								<div class="flex gap-1.5">
+									<span class="w-2 h-2 rounded-full bg-niva-accent/50 animate-bounce" style="animation-delay: 0ms;"></span>
+									<span class="w-2 h-2 rounded-full bg-niva-accent/50 animate-bounce" style="animation-delay: 150ms;"></span>
+									<span class="w-2 h-2 rounded-full bg-niva-accent/50 animate-bounce" style="animation-delay: 300ms;"></span>
+								</div>
+							</div>
+						</div>
+					{/if}
+				</div>
+			{/if}
+		</div>
+
+		<!-- Input Area -->
+		<div class="border-t border-niva-glass-border p-4 md:px-8 pb-20 md:pb-4">
+			<div class="max-w-3xl mx-auto space-y-3">
+				<div class="flex flex-wrap gap-2">
+					{#if imagePreview}
+						<div class="relative w-24 h-24 rounded-xl overflow-hidden border border-niva-accent/30 niva-glow">
+							<img src={imagePreview} alt="Preview" class="w-full h-full object-cover" />
+							<button
+								onclick={removeImage}
+								class="absolute top-1 right-1 w-6 h-6 rounded-lg bg-black/60 text-white flex items-center justify-center hover:bg-black/80 transition-colors cursor-pointer"
+							>
+								<X size={14} />
+							</button>
+						</div>
+					{/if}
+					{#if docName}
+						<div class="relative flex items-center gap-3 px-4 py-2 rounded-xl glass-panel border border-niva-accent/30 niva-glow pr-10">
+							<FileText size={18} class="text-niva-accent" />
+							<span class="text-xs text-niva-text truncate max-w-[150px]">{docName}</span>
+							<button
+								onclick={removeDoc}
+								class="absolute right-2 w-6 h-6 rounded-lg bg-white/5 text-niva-text-secondary flex items-center justify-center hover:bg-white/10 transition-colors cursor-pointer"
+							>
+								<X size={14} />
+							</button>
+						</div>
+					{/if}
+				</div>
+
+				<div class="flex items-end gap-3 glass-panel rounded-2xl p-3">
+					<input
+						type="file"
+						accept="image/*"
+						bind:this={imageInput}
+						onchange={handleImageUpload}
+						class="hidden"
+					/>
+					<input
+						type="file"
+						accept=".pdf"
+						bind:this={docInput}
+						onchange={handleDocUpload}
+						class="hidden"
+					/>
+					
+					<div class="flex gap-1 shrink-0">
+						<button
+							onclick={handleImageClick}
+							class="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-white/5 transition-all duration-200 cursor-pointer text-niva-text-secondary hover:text-niva-accent"
+							title="Upload Image"
+						>
+							<ImagePlus size={20} />
+						</button>
+						<button
+							onclick={handleDocClick}
+							class="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-white/5 transition-all duration-200 cursor-pointer text-niva-text-secondary hover:text-niva-accent"
+							title="Upload PDF"
+						>
+							<FileText size={20} />
+						</button>
+					</div>
+
+					<textarea
+						bind:value={inputValue}
+						onkeydown={handleKeydown}
+						placeholder="Message Niva (search, upload pdf...)"
+						rows="1"
+						class="flex-1 bg-transparent border-none outline-none text-sm text-niva-text placeholder:text-niva-text-secondary resize-none max-h-32"
+					></textarea>
+					<button
+						onclick={handleSend}
+						disabled={(!inputValue.trim() && !selectedImage && !selectedDoc) || isLoading}
+						class="w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-200 cursor-pointer shrink-0
+							{(inputValue.trim() || selectedImage || selectedDoc) && !isLoading
+								? 'bg-niva-accent text-niva-bg hover:opacity-90'
+								: 'bg-white/5 text-niva-text-secondary'}"
+					>
+						{#if isLoading}
+							<Loader2 size={16} class="animate-spin" />
+						{:else}
+							<Send size={16} />
+						{/if}
+					</button>
+				</div>
+				<p class="text-[10px] text-niva-text-secondary text-center">
+					Niva AI can search the web and read PDF files now.
+				</p>
+			</div>
+		</div>
+	</div>
+</div>

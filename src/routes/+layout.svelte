@@ -1,11 +1,12 @@
 <script lang="ts">
 	import './layout.css';
-	import favicon from '$lib/assets/favicon.svg';
 
 	let { children } = $props();
 </script>
 
-<svelte:head><link rel="icon" href={favicon} /></svelte:head>
-<div class="min-h-screen min-w-screen bg-black justify-center items-center flex">
+<svelte:head>
+	<title>Niva</title>
+	<meta name="description" content="Niva – Your Premium AI Intelligence Platform" />
+</svelte:head>
+
 {@render children()}
-</div>
