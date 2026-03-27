@@ -52,11 +52,17 @@ async function parsePdf(base64Data) {
         const buffer = Buffer.from(base64Data.split(',')[1], 'base64');
         const uint8Array = new Uint8Array(buffer);
         const fontPath = path.join(process.cwd(), 'node_modules', 'pdfjs-dist', 'standard_fonts', '/');
-        const instance = new PDFParse(uint8Array, {
+        const instance = new PDFParse({
+            data: uint8Array,
             standardFontDataUrl: fontPath
         });
-        const text = await instance.getText();
-        return text || 'Empty PDF content.';
+
+        try {
+            const data = await instance.getText();
+            return data.text || 'Empty PDF content.';
+        } finally {
+            await instance.destroy();
+        }
     } catch (err) {
         console.error('PDF parse error:', err);
         return 'Failed to read PDF content.';
