@@ -29,6 +29,8 @@ services:
       - PORT=3001
       - JWT_SECRET=your_jwt_secret_here
       - FRONTEND_URL=http://localhost:5173
+    env_file:
+      - ./server/.env
     networks:
       - niva-network
 
