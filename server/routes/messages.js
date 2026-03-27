@@ -4,6 +4,7 @@ import { authMiddleware } from '../middleware/auth.js';
 import Groq from 'groq-sdk';
 import axios from 'axios';
 import path from 'path';
+import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 const pdfModule = require('pdf-parse');
 // This is the modern mehmet-kozan/pdf-parse library which uses a class
