@@ -9,6 +9,7 @@ CREATE TABLE users (
     password_hash VARCHAR(255) NOT NULL,
     memory TEXT DEFAULT '',
     plan VARCHAR(20) DEFAULT 'free',
+    avatar_url TEXT DEFAULT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
