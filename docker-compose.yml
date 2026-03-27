@@ -12,6 +12,44 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./server/db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+    networks:
+      - niva-network
+
+  api:
+    build:
+      context: ./server
+    container_name: niva-api
+    restart: unless-stopped
+    depends_on:
+      - postgres
+    ports:
+      - '3001:3001'
+    environment:
+      - DATABASE_URL=postgresql://niva:niva_pass@postgres:5432/niva_db
+      - PORT=3001
+      - JWT_SECRET=your_jwt_secret_here
+      - FRONTEND_URL=http://localhost:5173
+    networks:
+      - niva-network
+
+  web:
+    build:
+      context: .
+    container_name: niva-web
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - '5173:5173'
+    environment:
+      - PORT=5173
+      - ORIGIN=http://localhost:5173
+    networks:
+      - niva-network
+
+networks:
+  niva-network:
+    driver: bridge
 
 volumes:
   pgdata:
