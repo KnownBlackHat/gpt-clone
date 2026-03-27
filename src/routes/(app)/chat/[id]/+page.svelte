@@ -396,16 +396,36 @@
 		padding: 0;
 		border-radius: 0;
 	}
-	:global(.markdown-content ul, .markdown-content ol) {
+	:global(.markdown-content ul) {
 		margin: 0.75rem 0;
 		padding-left: 1.5rem;
+		list-style-type: disc;
+	}
+	:global(.markdown-content ol) {
+		margin: 0.75rem 0;
+		padding-left: 1.5rem;
+		list-style-type: decimal;
 	}
 	:global(.markdown-content li) {
-		margin-bottom: 0.25rem;
+		margin-bottom: 0.4rem;
 	}
 	:global(.markdown-content h1, .markdown-content h2, .markdown-content h3) {
 		font-weight: 600;
 		margin: 1.25rem 0 0.75rem 0;
 		color: #fff;
+		line-height: 1.3;
+	}
+	:global(.markdown-content strong) {
+		font-weight: 700;
+		color: #fff;
+	}
+	:global(.markdown-content em) {
+		font-style: italic;
+	}
+	:global(.markdown-content blockquote) {
+		border-left: 3px solid rgba(255, 255, 255, 0.2);
+		padding-left: 1rem;
+		margin: 1rem 0;
+		color: rgba(255, 255, 255, 0.7);
 	}
 </style>
