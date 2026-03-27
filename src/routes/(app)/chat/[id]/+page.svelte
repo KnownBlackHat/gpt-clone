@@ -13,8 +13,10 @@
 		Globe,
 	} from '@lucide/svelte';
 
-	import { marked } from 'marked';
+	import { Marked } from 'marked';
 	import DOMPurify from 'dompurify';
+
+	const marked = new Marked();
 
 	let conversationId = $derived($page.params.id);
 	let messages = $state<Message[]>([]);
@@ -33,9 +35,14 @@
 		if (!content) return '';
 		try {
 			// Ensure marked is working
-			const rawHtml = marked.parse(content) as string;
+			const rawHtml = marked && typeof marked.parse === 'function' 
+				? marked.parse(content) as string 
+				: content;
+			
 			// Sanitize
-			return DOMPurify.sanitize(rawHtml);
+			return DOMPurify && typeof DOMPurify.sanitize === 'function'
+				? DOMPurify.sanitize(rawHtml)
+				: rawHtml;
 		} catch (e) {
 			console.error('Markdown rendering error:', e);
 			return content;
