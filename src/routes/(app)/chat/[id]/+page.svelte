@@ -24,6 +24,9 @@
 	let isSearching = $state(false);
 	let title = $state('Chat');
 	let messagesContainer: HTMLElement;
+	let errorMessage = $state<string | null>(null);
+
+	const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
 	// Helper to render markdown safely
 	function renderMarkdown(content: string) {
@@ -72,8 +75,15 @@
 	}
 
 	function handleImageUpload(e: Event) {
+		errorMessage = null;
 		const file = (e.target as HTMLInputElement).files?.[0];
 		if (!file) return;
+
+		if (file.size > MAX_FILE_SIZE) {
+			errorMessage = `Image too large. Max size is ${MAX_FILE_SIZE / (1024 * 1024)}MB.`;
+			if (imageInput) imageInput.value = '';
+			return;
+		}
 
 		const reader = new FileReader();
 		reader.onload = (e) => {
@@ -85,8 +95,15 @@
 	}
 
 	function handleDocUpload(e: Event) {
+		errorMessage = null;
 		const file = (e.target as HTMLInputElement).files?.[0];
 		if (!file) return;
+
+		if (file.size > MAX_FILE_SIZE) {
+			errorMessage = `PDF too large. Max size is ${MAX_FILE_SIZE / (1024 * 1024)}MB.`;
+			if (docInput) docInput.value = '';
+			return;
+		}
 
 		docName = file.name;
 		const reader = new FileReader();
@@ -272,6 +289,18 @@
 					</div>
 				{/if}
 			</div>
+
+			{#if errorMessage}
+				<div class="px-4 py-2 rounded-xl bg-niva-error-bg border border-niva-error/20 flex items-center justify-between group">
+					<div class="flex items-center gap-2">
+						<span class="w-1.5 h-1.5 rounded-full bg-niva-error animate-pulse"></span>
+						<span class="text-xs text-niva-error font-medium">{errorMessage}</span>
+					</div>
+					<button onclick={() => errorMessage = null} class="p-1 rounded-lg hover:bg-niva-error/10 text-niva-error/60 transition-colors">
+						<X size={12} />
+					</button>
+				</div>
+			{/if}
 
 			<div class="flex items-end gap-3 glass-panel rounded-2xl p-3">
 				<input

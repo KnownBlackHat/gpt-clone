@@ -6,6 +6,7 @@ import axios from 'axios';
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 const pdf = require('pdf-parse');
+const pdfParser = typeof pdf === 'function' ? pdf : pdf.default;
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -47,7 +48,7 @@ async function searchSerper(query) {
 async function parsePdf(base64Data) {
     try {
         const buffer = Buffer.from(base64Data.split(',')[1], 'base64');
-        const data = await pdf(buffer);
+        const data = await pdfParser(buffer);
         return data.text;
     } catch (err) {
         console.error('PDF parse error:', err);
