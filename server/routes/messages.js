@@ -6,7 +6,8 @@ import axios from 'axios';
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 const pdfModule = require('pdf-parse');
-const pdfParser = typeof pdfModule === 'function' ? pdfModule : (typeof pdfModule.default === 'function' ? pdfModule.default : pdfModule);
+// This is the modern mehmet-kozan/pdf-parse library which uses a class
+const PDFParse = pdfModule.PDFParse || pdfModule.default?.PDFParse;
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -48,8 +49,10 @@ async function searchSerper(query) {
 async function parsePdf(base64Data) {
     try {
         const buffer = Buffer.from(base64Data.split(',')[1], 'base64');
-        const data = await pdfParser(buffer);
-        return data.text;
+        const uint8Array = new Uint8Array(buffer);
+        const instance = new PDFParse(uint8Array);
+        const text = await instance.getText();
+        return text || 'Empty PDF content.';
     } catch (err) {
         console.error('PDF parse error:', err);
         return 'Failed to read PDF content.';
