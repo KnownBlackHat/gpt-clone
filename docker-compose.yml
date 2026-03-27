@@ -29,6 +29,7 @@ services:
       - PORT=3001
       - JWT_SECRET=your_jwt_secret_here
       - FRONTEND_URL=http://localhost
+      - COOKIE_SECURE=false
     env_file:
       - ./server/.env
     networks:
