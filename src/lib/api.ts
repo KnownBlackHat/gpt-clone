@@ -52,10 +52,10 @@ export const api = {
     messages: {
         list: (conversationId: string) =>
             request<{ messages: Message[] }>(`/conversations/${conversationId}/messages`),
-        send: (conversationId: string, content: string, imageUrl?: string, pdfData?: string) =>
+        send: (conversationId: string, content: string, imageUrl?: string, pdfData?: string, isSearchEnabled?: boolean) =>
             request<{ userMessage: Message; assistantMessage: Message; wasSearched?: boolean }>(
                 `/conversations/${conversationId}/messages`,
-                { method: 'POST', body: { content, imageUrl, pdfData } }
+                { method: 'POST', body: { content, imageUrl, pdfData, isSearchEnabled } }
             ),
     },
     user: {

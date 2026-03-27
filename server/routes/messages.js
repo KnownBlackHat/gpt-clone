@@ -94,14 +94,15 @@ router.get('/:conversationId/messages', async (req, res) => {
 // POST /api/conversations/:conversationId/messages
 router.post('/:conversationId/messages', async (req, res) => {
     try {
-        const { content, imageUrl, pdfData } = req.body;
+        const { content, imageUrl, pdfData, isSearchEnabled } = req.body;
+        const userId = req.user.userId;
 
         if (!content && !imageUrl && !pdfData) {
             return res.status(400).json({ error: 'Message content, image, or PDF is required' });
         }
 
         // 1. Verify ownership and fetch user memory
-        const userRes = await pool.query('SELECT memory FROM users WHERE id = $1', [req.user.userId]);
+        const userRes = await pool.query('SELECT memory FROM users WHERE id = $1', [userId]);
         const userMemory = userRes.rows[0]?.memory || '';
 
         const conv = await pool.query(
@@ -127,8 +128,9 @@ router.post('/:conversationId/messages', async (req, res) => {
 
         let searchResults = null;
         const lowercaseContent = (content || '').toLowerCase();
-        if (lowercaseContent.includes('search') || lowercaseContent.includes('latest') || lowercaseContent.includes('who is')) {
-            searchResults = await searchSerper(content);
+        const searchKeywords = ['search', 'latest', 'who is', 'current', 'stock', 'price', 'weather', 'news', 'today', 'live'];
+        if (isSearchEnabled || searchKeywords.some(keyword => lowercaseContent.includes(keyword))) {
+            searchResults = await searchSerper(content || 'latest news');
         }
 
         // 4. Build message array for Groq
