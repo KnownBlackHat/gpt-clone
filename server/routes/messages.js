@@ -3,7 +3,9 @@ import pool from '../db/index.js';
 import { authMiddleware } from '../middleware/auth.js';
 import Groq from 'groq-sdk';
 import axios from 'axios';
-import pdf from 'pdf-parse/lib/pdf-parse.js';
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const pdf = require('pdf-parse');
 import dotenv from 'dotenv';
 
 dotenv.config();
