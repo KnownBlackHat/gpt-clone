@@ -17,7 +17,7 @@ const groq = new Groq({
     apiKey: process.env.GROQ_API_KEY,
 });
 
-const VISION_MODEL = 'openai/gpt-oss-20b';
+const VISION_MODEL = process.env.VISION_MODEL || 'meta-llama/llama-4-scout-17b-16e-instruct'; // Default for 2026, or use 'pixtral-12b'
 
 function generateTitle(content) {
     const words = content.split(' ').slice(0, 6).join(' ');
@@ -129,7 +129,9 @@ router.post('/:conversationId/messages', async (req, res) => {
 
         // Add history
         history.forEach(msg => {
-            modelMessages.push({ role: msg.role, content: msg.content });
+            // Groq requires historical messages content to be strings
+            const content = typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content);
+            modelMessages.push({ role: msg.role, content });
         });
 
         // Add additional context (PDF/Search)
