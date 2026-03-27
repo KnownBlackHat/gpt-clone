@@ -13,6 +13,9 @@
 		Globe,
 	} from '@lucide/svelte';
 
+	import { marked } from 'marked';
+	import DOMPurify from 'dompurify';
+
 	let conversationId = $derived($page.params.id);
 	let messages = $state<Message[]>([]);
 	let inputValue = $state('');
@@ -21,6 +24,13 @@
 	let isSearching = $state(false);
 	let title = $state('Chat');
 	let messagesContainer: HTMLElement;
+
+	// Helper to render markdown safely
+	function renderMarkdown(content: string) {
+		if (!content) return '';
+		const rawHtml = marked.parse(content) as string;
+		return DOMPurify.sanitize(rawHtml);
+	}
 
 	// Multimodal / Document state
 	let imageInput: HTMLInputElement;
@@ -197,7 +207,13 @@
 							</div>
 						{/if}
 						{#if msg.content}
-							<p class="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+							<div class="text-sm leading-relaxed markdown-content">
+								{#if msg.role === 'assistant'}
+									{@html renderMarkdown(msg.content)}
+								{:else}
+									<p class="whitespace-pre-wrap">{msg.content}</p>
+								{/if}
+							</div>
 						{/if}
 						<span class="text-[10px] text-niva-text-secondary mt-2 block">{formatTime(msg.created_at)}</span>
 					</div>
@@ -315,3 +331,47 @@
 		</div>
 	</div>
 </div>
+
+<style>
+	:global(.markdown-content) {
+		word-break: break-word;
+	}
+	:global(.markdown-content p) {
+		margin-bottom: 0.75rem;
+	}
+	:global(.markdown-content p:last-child) {
+		margin-bottom: 0;
+	}
+	:global(.markdown-content pre) {
+		background: rgba(0, 0, 0, 0.3);
+		border: 1px solid rgba(255, 255, 255, 0.1);
+		border-radius: 0.75rem;
+		padding: 1rem;
+		margin: 1rem 0;
+		overflow-x: auto;
+	}
+	:global(.markdown-content code) {
+		font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+		font-size: 0.85em;
+		background: rgba(255, 255, 255, 0.1);
+		padding: 0.2rem 0.4rem;
+		border-radius: 0.4rem;
+	}
+	:global(.markdown-content pre code) {
+		background: transparent;
+		padding: 0;
+		border-radius: 0;
+	}
+	:global(.markdown-content ul, .markdown-content ol) {
+		margin: 0.75rem 0;
+		padding-left: 1.5rem;
+	}
+	:global(.markdown-content li) {
+		margin-bottom: 0.25rem;
+	}
+	:global(.markdown-content h1, .markdown-content h2, .markdown-content h3) {
+		font-weight: 600;
+		margin: 1.25rem 0 0.75rem 0;
+		color: #fff;
+	}
+</style>

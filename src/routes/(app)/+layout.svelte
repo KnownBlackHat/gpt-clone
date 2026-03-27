@@ -5,7 +5,6 @@
 	import {
 		MessageSquarePlus,
 		MessageCircle,
-		Bookmark,
 		Settings,
 		User,
 		LogOut,
@@ -17,7 +16,6 @@
 
 	const navItems = [
 		{ icon: MessageCircle, label: 'Recent', href: '/chat' },
-		{ icon: Bookmark, label: 'Saved', href: '/saved' },
 		{ icon: Settings, label: 'Settings', href: '/settings' },
 	];
 
