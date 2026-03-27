@@ -28,7 +28,7 @@ services:
       - DATABASE_URL=postgresql://niva:niva_pass@postgres:5432/niva_db
       - PORT=3001
       - JWT_SECRET=your_jwt_secret_here
-      - FRONTEND_URL=http://localhost:5173
+      - FRONTEND_URL=http://localhost
     env_file:
       - ./server/.env
     networks:
@@ -42,10 +42,10 @@ services:
     depends_on:
       - api
     ports:
-      - '5173:5173'
+      - '80:5173'
     environment:
       - PORT=5173
-      - ORIGIN=http://localhost:5173
+      - ORIGIN=http://localhost
     networks:
       - niva-network
 
