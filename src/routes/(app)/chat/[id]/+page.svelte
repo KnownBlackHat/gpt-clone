@@ -31,8 +31,15 @@
 	// Helper to render markdown safely
 	function renderMarkdown(content: string) {
 		if (!content) return '';
-		const rawHtml = marked.parse(content) as string;
-		return DOMPurify.sanitize(rawHtml);
+		try {
+			// Ensure marked is working
+			const rawHtml = marked.parse(content) as string;
+			// Sanitize
+			return DOMPurify.sanitize(rawHtml);
+		} catch (e) {
+			console.error('Markdown rendering error:', e);
+			return content;
+		}
 	}
 
 	// Multimodal / Document state
