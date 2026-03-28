@@ -22,6 +22,7 @@
 	let isLoading = $state(false);
 	let isTyping = $state(false);
 	let isSearching = $state(false);
+	let isSearchEnabled = $state(false);
 	let messagesContainer: HTMLElement;
 
 	// Multimodal / Document state
@@ -155,12 +156,20 @@
 		isTyping = true;
 		
 		const lowContent = content.toLowerCase();
-		if (lowContent.includes('search') || lowContent.includes('latest') || lowContent.includes('who is')) {
+		if (isSearchEnabled) {
 			isSearching = true;
+		} else {
+			const searchKeywords = ['search', 'latest', 'who is', 'current', 'stock', 'price', 'weather', 'news', 'today', 'live'];
+			if (searchKeywords.some(keyword => lowContent.includes(keyword))) {
+				isSearching = true;
+			}
 		}
 
+		const currentSearchEnabled = isSearchEnabled;
+		isSearchEnabled = false; // Reset after use
+
 		try {
-			const data = await api.messages.send(activeConversationId!, content, imageUrl || undefined, docUrl || undefined);
+			const data = await api.messages.send(activeConversationId!, content, imageUrl || undefined, docUrl || undefined, currentSearchEnabled);
 			// Replace temp message and add AI response
 			messages = messages
 				.filter((m) => m.id !== tempUserMsg.id)
@@ -386,6 +395,14 @@
 							title="Upload PDF"
 						>
 							<FileText size={20} />
+						</button>
+						<button
+							onclick={() => isSearchEnabled = !isSearchEnabled}
+							class="w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-200 cursor-pointer
+								{isSearchEnabled ? 'text-niva-accent bg-niva-accent/10' : 'text-niva-text-secondary hover:text-niva-accent hover:bg-white/5'}"
+							title="Web Search"
+						>
+							<Globe size={20} />
 						</button>
 					</div>
 
