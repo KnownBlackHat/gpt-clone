@@ -25,6 +25,15 @@
 	let messagesContainer: HTMLElement;
 	let errorMessage = $state<string | null>(null);
 	let isSearchEnabled = $state(false);
+	let textareaElement = $state<HTMLTextAreaElement | null>(null);
+
+	// Auto-resize textarea
+	$effect(() => {
+		if (textareaElement && inputValue !== undefined) {
+			textareaElement.style.height = 'auto';
+			textareaElement.style.height = textareaElement.scrollHeight + 'px';
+		}
+	});
 
 	const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
@@ -318,11 +327,12 @@
 				</div>
 
 				<textarea
+					bind:this={textareaElement}
 					bind:value={inputValue}
 					onkeydown={handleKeydown}
 					placeholder="Message Niva..."
 					rows="1"
-					class="flex-1 bg-transparent border-none outline-none text-sm text-niva-text placeholder:text-niva-text-secondary resize-none max-h-32"
+					class="flex-1 bg-transparent border-none outline-none text-sm text-niva-text placeholder:text-niva-text-secondary resize-none max-h-32 niva-scrollbar overflow-y-auto"
 				></textarea>
 				<button
 					onclick={handleSend}
