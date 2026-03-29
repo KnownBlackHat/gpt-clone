@@ -13,10 +13,7 @@
 		Globe,
 	} from '@lucide/svelte';
 
-	import { Marked } from 'marked';
-	import DOMPurify from 'dompurify';
-
-	const marked = new Marked();
+	import ChatMessage from '$lib/components/ChatMessage.svelte';
 
 	let conversationId = $derived($page.params.id);
 	let messages = $state<Message[]>([]);
@@ -30,25 +27,6 @@
 	let isSearchEnabled = $state(false);
 
 	const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
-
-	// Helper to render markdown safely
-	function renderMarkdown(content: string) {
-		if (!content) return '';
-		try {
-			// Ensure marked is working
-			const rawHtml = marked && typeof marked.parse === 'function' 
-				? marked.parse(content) as string 
-				: content;
-			
-			// Sanitize
-			return DOMPurify && typeof DOMPurify.sanitize === 'function'
-				? DOMPurify.sanitize(rawHtml)
-				: rawHtml;
-		} catch (e) {
-			console.error('Markdown rendering error:', e);
-			return content;
-		}
-	}
 
 	// Multimodal / Document state
 	let imageInput: HTMLInputElement;
@@ -206,11 +184,6 @@
 		}
 	}
 
-	function formatTime(dateStr: string) {
-		const d = new Date(dateStr);
-		return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-	}
-
 	$effect(() => {
 		if (conversationId) loadData();
 	});
@@ -235,34 +208,7 @@
 	<div bind:this={messagesContainer} class="flex-1 overflow-y-auto niva-scrollbar px-4 md:px-8 py-6">
 		<div class="max-w-3xl mx-auto space-y-6">
 			{#each messages as msg}
-				<div class="flex gap-3 {msg.role === 'user' ? 'justify-end' : 'justify-start'}">
-					{#if msg.role === 'assistant'}
-						<div class="w-8 h-8 rounded-xl niva-gradient flex items-center justify-center shrink-0 mt-1">
-							<Sparkles size={14} class="text-niva-accent" />
-						</div>
-					{/if}
-					<div
-						class="max-w-[80%] rounded-2xl px-4 py-3 {msg.role === 'user'
-							? 'bg-niva-accent/15 border border-niva-accent/20 text-niva-text'
-							: 'glass-panel text-niva-text'}"
-					>
-						{#if msg.image_url}
-							<div class="mb-3 rounded-xl overflow-hidden border border-white/10">
-								<img src={msg.image_url} alt="Attached input" class="max-w-full h-auto object-contain max-h-64" />
-							</div>
-						{/if}
-						{#if msg.content}
-							<div class="text-sm leading-relaxed markdown-content">
-								{#if msg.role === 'assistant'}
-									{@html renderMarkdown(msg.content)}
-								{:else}
-									<p class="whitespace-pre-wrap">{msg.content}</p>
-								{/if}
-							</div>
-						{/if}
-						<span class="text-[10px] text-niva-text-secondary mt-2 block">{formatTime(msg.created_at)}</span>
-					</div>
-				</div>
+				<ChatMessage message={msg} />
 			{/each}
 
 			{#if isSearching}
@@ -398,65 +344,4 @@
 </div>
 
 <style>
-	:global(.markdown-content) {
-		word-break: break-word;
-	}
-	:global(.markdown-content p) {
-		margin-bottom: 0.75rem;
-	}
-	:global(.markdown-content p:last-child) {
-		margin-bottom: 0;
-	}
-	:global(.markdown-content pre) {
-		background: rgba(0, 0, 0, 0.3);
-		border: 1px solid rgba(255, 255, 255, 0.1);
-		border-radius: 0.75rem;
-		padding: 1rem;
-		margin: 1rem 0;
-		overflow-x: auto;
-	}
-	:global(.markdown-content code) {
-		font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-		font-size: 0.85em;
-		background: rgba(255, 255, 255, 0.1);
-		padding: 0.2rem 0.4rem;
-		border-radius: 0.4rem;
-	}
-	:global(.markdown-content pre code) {
-		background: transparent;
-		padding: 0;
-		border-radius: 0;
-	}
-	:global(.markdown-content ul) {
-		margin: 0.75rem 0;
-		padding-left: 1.5rem;
-		list-style-type: disc;
-	}
-	:global(.markdown-content ol) {
-		margin: 0.75rem 0;
-		padding-left: 1.5rem;
-		list-style-type: decimal;
-	}
-	:global(.markdown-content li) {
-		margin-bottom: 0.4rem;
-	}
-	:global(.markdown-content h1, .markdown-content h2, .markdown-content h3) {
-		font-weight: 600;
-		margin: 1.25rem 0 0.75rem 0;
-		color: #fff;
-		line-height: 1.3;
-	}
-	:global(.markdown-content strong) {
-		font-weight: 700;
-		color: #fff;
-	}
-	:global(.markdown-content em) {
-		font-style: italic;
-	}
-	:global(.markdown-content blockquote) {
-		border-left: 3px solid rgba(255, 255, 255, 0.2);
-		padding-left: 1rem;
-		margin: 1rem 0;
-		color: rgba(255, 255, 255, 0.7);
-	}
 </style>

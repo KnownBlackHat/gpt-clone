@@ -14,6 +14,7 @@
 		X,
 		Globe,
 	} from '@lucide/svelte';
+	import ChatMessage from '$lib/components/ChatMessage.svelte';
 
 	let conversations = $state<Conversation[]>([]);
 	let activeConversationId = $state<string | null>(null);
@@ -198,11 +199,6 @@
 		}
 	}
 
-	function formatTime(dateStr: string) {
-		const d = new Date(dateStr);
-		return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-	}
-
 	$effect(() => {
 		loadConversations();
 	});
@@ -287,28 +283,7 @@
 				<!-- Message List -->
 				<div class="max-w-3xl mx-auto space-y-6">
 					{#each messages as msg}
-						<div class="flex gap-3 {msg.role === 'user' ? 'justify-end' : 'justify-start'}">
-							{#if msg.role === 'assistant'}
-								<div class="w-8 h-8 rounded-xl niva-gradient flex items-center justify-center shrink-0 mt-1">
-									<Sparkles size={14} class="text-niva-accent" />
-								</div>
-							{/if}
-							<div
-								class="max-w-[80%] rounded-2xl px-4 py-3 {msg.role === 'user'
-									? 'bg-niva-accent/15 border border-niva-accent/20 text-niva-text'
-									: 'glass-panel text-niva-text'}"
-							>
-								{#if msg.image_url}
-									<div class="mb-3 rounded-xl overflow-hidden border border-white/10">
-										<img src={msg.image_url} alt="Attached input" class="max-w-full h-auto object-contain max-h-64" />
-									</div>
-								{/if}
-								{#if msg.content}
-									<p class="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
-								{/if}
-								<span class="text-[10px] text-niva-text-secondary mt-2 block">{formatTime(msg.created_at)}</span>
-							</div>
-						</div>
+						<ChatMessage message={msg} />
 					{/each}
 
 					{#if isSearching}

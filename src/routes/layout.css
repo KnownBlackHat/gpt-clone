@@ -128,9 +128,11 @@
 	* {
 		@apply border-border outline-ring/50;
 	}
+
 	body {
 		@apply bg-background text-foreground;
 	}
+
 	html {
 		@apply font-sans;
 	}
@@ -167,25 +169,33 @@
 }
 
 @custom-variant data-open {
-	&:where([data-state="open"]), &:where([data-open]:not([data-open="false"])) {
+
+	&:where([data-state="open"]),
+	&:where([data-open]:not([data-open="false"])) {
 		@slot;
 	}
 }
 
 @custom-variant data-closed {
-	&:where([data-state="closed"]), &:where([data-closed]:not([data-closed="false"])) {
+
+	&:where([data-state="closed"]),
+	&:where([data-closed]:not([data-closed="false"])) {
 		@slot;
 	}
 }
 
 @custom-variant data-checked {
-	&:where([data-state="checked"]), &:where([data-checked]:not([data-checked="false"])) {
+
+	&:where([data-state="checked"]),
+	&:where([data-checked]:not([data-checked="false"])) {
 		@slot;
 	}
 }
 
 @custom-variant data-unchecked {
-	&:where([data-state="unchecked"]), &:where([data-unchecked]:not([data-unchecked="false"])) {
+
+	&:where([data-state="unchecked"]),
+	&:where([data-unchecked]:not([data-unchecked="false"])) {
 		@slot;
 	}
 }
@@ -197,13 +207,17 @@
 }
 
 @custom-variant data-disabled {
-	&:where([data-disabled="true"]), &:where([data-disabled]:not([data-disabled="false"])) {
+
+	&:where([data-disabled="true"]),
+	&:where([data-disabled]:not([data-disabled="false"])) {
 		@slot;
 	}
 }
 
 @custom-variant data-active {
-	&:where([data-state="active"]), &:where([data-active]:not([data-active="false"])) {
+
+	&:where([data-state="active"]),
+	&:where([data-active]:not([data-active="false"])) {
 		@slot;
 	}
 }
@@ -220,9 +234,124 @@
 	}
 }
 
+/* --- Modern Polishes --- */
+::selection {
+	background: rgba(0, 240, 255, 0.2);
+	color: #fff;
+}
+
+/* --- Animations --- */
+@keyframes fade-in {
+	from {
+		opacity: 0;
+	}
+
+	to {
+		opacity: 1;
+	}
+}
+
+@keyframes slide-up {
+	from {
+		transform: translateY(10px);
+		opacity: 0;
+	}
+
+	to {
+		transform: translateY(0);
+		opacity: 1;
+	}
+}
+
+@keyframes float {
+
+	0%,
+	100% {
+		transform: translateY(0) scale(1);
+	}
+
+	50% {
+		transform: translateY(-20px) scale(1.05);
+	}
+}
+
+@keyframes pulse-slow {
+
+	0%,
+	100% {
+		opacity: 0.3;
+		transform: scale(1);
+	}
+
+	50% {
+		opacity: 0.5;
+		transform: scale(1.1);
+	}
+}
+
+.animate-fade-in {
+	animation: fade-in 0.5s ease-out forwards;
+}
+
+.animate-slide-up {
+	animation: slide-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-float {
+	animation: float 10s ease-in-out infinite;
+}
+
+/* --- Refined Utility Classes --- */
+.glass-panel {
+	background: rgba(255, 255, 255, 0.03);
+	backdrop-filter: blur(12px);
+	-webkit-backdrop-filter: blur(12px);
+	border: 1px solid rgba(255, 255, 255, 0.06);
+	box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
+	transition: all 0.3s ease;
+}
+
+.glass-panel:hover {
+	background: rgba(255, 255, 255, 0.05);
+	border-color: rgba(0, 240, 255, 0.2);
+}
+
+.glass-panel-strong {
+	background: rgba(10, 11, 14, 0.85);
+	backdrop-filter: blur(20px);
+	-webkit-backdrop-filter: blur(20px);
+	border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.text-gradient {
+	background: linear-gradient(135deg, #00f0ff 0%, #0072ff 100%);
+	-webkit-background-clip: text;
+	-webkit-text-fill-color: transparent;
+	background-clip: text;
+}
+
+/* --- Scrollbar Customization --- */
+.niva-scrollbar::-webkit-scrollbar {
+	width: 5px;
+}
+
+.niva-scrollbar::-webkit-scrollbar-track {
+	background: transparent;
+}
+
+.niva-scrollbar::-webkit-scrollbar-thumb {
+	background: rgba(255, 255, 255, 0.1);
+	border-radius: 10px;
+}
+
+.niva-scrollbar::-webkit-scrollbar-thumb:hover {
+	background: rgba(0, 240, 255, 0.3);
+}
+
 @utility no-scrollbar {
 	-ms-overflow-style: none;
 	scrollbar-width: none;
+
 	&::-webkit-scrollbar {
 		display: none;
 	}
@@ -232,16 +361,20 @@
 @utility niva-scrollbar {
 	scrollbar-width: thin;
 	scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+
 	&::-webkit-scrollbar {
 		width: 4px;
 	}
+
 	&::-webkit-scrollbar-track {
 		background: transparent;
 	}
+
 	&::-webkit-scrollbar-thumb {
 		background: rgba(255, 255, 255, 0.1);
 		border-radius: 4px;
 	}
+
 	&::-webkit-scrollbar-thumb:hover {
 		background: rgba(255, 255, 255, 0.2);
 	}
@@ -249,6 +382,13 @@
 
 /* Typewriter animation */
 @keyframes typewriter-blink {
-	0%, 100% { opacity: 1; }
-	50% { opacity: 0; }
+
+	0%,
+	100% {
+		opacity: 1;
+	}
+
+	50% {
+		opacity: 0;
+	}
 }
