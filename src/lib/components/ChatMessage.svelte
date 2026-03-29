@@ -3,12 +3,24 @@
 	import { markedHighlight } from 'marked-highlight';
 	import hljs from 'highlight.js';
 	import DOMPurify from 'dompurify';
-	import { Sparkles, User as UserIcon } from '@lucide/svelte';
+	import { Sparkles, User as UserIcon, Copy, Check } from '@lucide/svelte';
 
 	// Import highlight.js theme
 	import 'highlight.js/styles/atom-one-dark.css';
 
 	let { message } = $props<{ message: any }>();
+	let isAssistant = $derived(message.role === 'assistant');
+	let copied = $state(false);
+
+	async function copyToClipboard() {
+		try {
+			await navigator.clipboard.writeText(message.content);
+			copied = true;
+			setTimeout(() => (copied = false), 2000);
+		} catch (err) {
+			console.error('Failed to copy text: ', err);
+		}
+	}
 
 	const marked = new Marked(
 		markedHighlight({
@@ -64,6 +76,23 @@
 				<div class="markdown-content">
 					{@html renderMarkdown(message.content)}
 				</div>
+				{#if isAssistant}
+					<div class="mt-3 flex items-center justify-end border-t border-white/5 pt-2">
+						<button
+							onclick={copyToClipboard}
+							class="p-1.5 rounded-lg hover:bg-white/5 text-niva-text-secondary hover:text-niva-accent transition-all duration-200 cursor-pointer flex items-center gap-1.5 group"
+							title="Copy response"
+						>
+							{#if copied}
+								<Check size={14} class="text-green-400" />
+								<span class="text-[10px] font-medium text-green-400">Copied!</span>
+							{:else}
+								<Copy size={14} class="opacity-50 group-hover:opacity-100 transition-opacity" />
+								<span class="text-[10px] font-medium opacity-0 group-hover:opacity-100 transition-opacity">Copy</span>
+							{/if}
+						</button>
+					</div>
+				{/if}
 			{:else}
 				<div class="whitespace-pre-wrap">{message.content}</div>
 			{/if}
