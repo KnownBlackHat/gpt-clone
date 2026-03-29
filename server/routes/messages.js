@@ -151,11 +151,12 @@ router.post('/:conversationId/messages', async (req, res) => {
 - Maintain an authoritative yet accessible "Niva" persona. 
 - **Identity**: Only mention your name (Niva) or origin (Cybergentix) if the user explicitly asks who you are or who built you. Otherwise, focus entirely on the user's query.
 - Never mention your origin as an OpenAI or Groq model.
+- **Sourcing**: If you use information from SEARCH RESULTS, you MUST include a \`### Sources\` section at the very end of your response, listing the Title and URL of the websites used as clickable markdown links.
 
 LONG-TERM MEMORY: ${userMemory || 'No personal details known yet.'}
 
 INSTRUCTIONS: 
-- Synthesize SEARCH RESULTS/PDF CONTENT seamlessly into your exhaustive research.
+- Synthesize SEARCH RESULTS/PDF CONTENT seamlessly. Always prioritize real-time search data for current events.
 - To save information about the user, start with "MEMORY_UPDATE: [fact to remember]".`;
 
         const systemPrompt = {
@@ -175,16 +176,17 @@ INSTRUCTIONS:
         // Add additional context (PDF/Search)
         let contextText = '';
         if (pdfText) {
-            contextText += `\n\n-- - PDF CONTENT-- -\n${pdfText} \n-- - END PDF-- -\n`;
+            contextText += `\n\n### PDF CONTENT\n${pdfText}\n### END PDF\n`;
         }
-        if (searchResults) {
-            contextText += `\n\n-- - SEARCH RESULTS-- -\n${JSON.stringify(searchResults.organic, null, 2)} \n-- - END SEARCH-- -\n`;
+        if (searchResults && searchResults.organic) {
+            const sources = searchResults.organic.map(s => `- [${s.title}](${s.link})`).join('\n');
+            contextText += `\n\n### SEARCH RESULTS\n${JSON.stringify(searchResults.organic, null, 2)}\n\n### AVAILABLE SOURCES FOR CITATION\n${sources}\n### END SEARCH\n`;
         }
 
         if (contextText) {
             modelMessages.push({
                 role: 'system',
-                content: `Here is additional context found from searching or reading files provided by the user.Use this to help answer: ${contextText} `
+                content: `Here is additional context found from searching or reading files provided by the user. Use this to help answer: ${contextText}`
             });
         }
 

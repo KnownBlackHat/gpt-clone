@@ -392,3 +392,50 @@
 		opacity: 0;
 	}
 }
+/* Code Block Copy Button */
+.copy-code-btn {
+	position: absolute;
+	top: 0.75rem;
+	right: 0.75rem;
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	padding: 0.4rem 0.6rem;
+	background: rgba(255, 255, 255, 0.05);
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	border-radius: 0.5rem;
+	color: rgba(255, 255, 255, 0.5);
+	font-size: 0.75rem;
+	font-weight: 500;
+	cursor: pointer;
+	transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+	opacity: 0;
+	backdrop-filter: blur(4px);
+	z-index: 10;
+}
+
+pre:hover .copy-code-btn {
+	opacity: 1;
+}
+
+.copy-code-btn:hover {
+	background: rgba(255, 255, 255, 0.1);
+	color: var(--niva-accent);
+	border-color: var(--niva-accent-glow);
+	transform: translateY(-1px);
+}
+
+.copy-code-btn.copied {
+	background: rgba(34, 197, 94, 0.1);
+	border-color: rgba(34, 197, 94, 0.2);
+	color: rgb(34, 197, 94);
+	opacity: 1;
+}
+
+.copy-code-btn svg {
+	transition: transform 0.2s;
+}
+
+.copy-code-btn:active svg {
+	transform: scale(0.9);
+}

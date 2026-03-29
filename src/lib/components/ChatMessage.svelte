@@ -66,6 +66,62 @@
 		return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 	}
 
+	function setupCodeBlocks(node: HTMLElement, content: string) {
+		const update = () => {
+			const pres = node.querySelectorAll('pre');
+			pres.forEach((pre) => {
+				if (pre.querySelector('.copy-code-btn')) return;
+
+				pre.style.position = 'relative';
+				const btn = document.createElement('button');
+				btn.className = 'copy-code-btn';
+				btn.innerHTML = `
+					<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+					<span>Copy</span>
+				`;
+
+				btn.onclick = async () => {
+					const code = pre.querySelector('code')?.innerText || '';
+					if (!code) return;
+
+					try {
+						if (navigator.clipboard && window.isSecureContext) {
+							await navigator.clipboard.writeText(code);
+						} else {
+							const textArea = document.createElement('textarea');
+							textArea.value = code;
+							textArea.style.position = 'fixed';
+							textArea.style.left = '-9999px';
+							document.body.appendChild(textArea);
+							textArea.select();
+							document.execCommand('copy');
+							document.body.removeChild(textArea);
+						}
+
+						btn.classList.add('copied');
+						btn.innerHTML = `
+							<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-green-400"><polyline points="20 6 9 17 4 12"/></svg>
+							<span class="text-green-400">Copied!</span>
+						`;
+						setTimeout(() => {
+							btn.classList.remove('copied');
+							btn.innerHTML = `
+								<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+								<span>Copy</span>
+							`;
+						}, 2000);
+					} catch (err) {
+						console.error('Failed to copy code:', err);
+					}
+				};
+
+				pre.appendChild(btn);
+			});
+		};
+
+		update();
+		return { update };
+	}
 </script>
 
 <div class="flex gap-4 {message.role === 'user' ? 'flex-row-reverse' : 'flex-row'} group animate-slide-up">
@@ -91,7 +147,7 @@
 					: 'glass-panel text-niva-text rounded-tl-none border border-white/5'}"
 		>
 			{#if message.role === 'assistant'}
-				<div class="markdown-content">
+				<div class="markdown-content" use:setupCodeBlocks={message.content}>
 					{@html renderMarkdown(message.content)}
 				</div>
 				{#if isAssistant}
