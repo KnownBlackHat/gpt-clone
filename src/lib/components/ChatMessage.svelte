@@ -13,8 +13,26 @@
 	let copied = $state(false);
 
 	async function copyToClipboard() {
+		const text = message.content;
+		if (!text) return;
+
 		try {
-			await navigator.clipboard.writeText(message.content);
+			if (navigator.clipboard && window.isSecureContext) {
+				await navigator.clipboard.writeText(text);
+			} else {
+				// Fallback to execCommand('copy') for non-secure contexts
+				const textArea = document.createElement('textarea');
+				textArea.value = text;
+				textArea.style.position = 'fixed';
+				textArea.style.left = '-9999px';
+				textArea.style.top = '0';
+				document.body.appendChild(textArea);
+				textArea.focus();
+				textArea.select();
+				const successful = document.execCommand('copy');
+				document.body.removeChild(textArea);
+				if (!successful) throw new Error('copy command failed');
+			}
 			copied = true;
 			setTimeout(() => (copied = false), 2000);
 		} catch (err) {
