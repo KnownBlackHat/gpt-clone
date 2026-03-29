@@ -32,37 +32,89 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
     return data as T;
 }
 
-// Auth
+// Auth & Account APIs
 export const api = {
     auth: {
+        /**
+         * Create a new user account.
+         * Note: this will also set the 'token' cookie via the backend.
+         */
         signup: (username: string, email: string, password: string) =>
             request('/auth/signup', { method: 'POST', body: { username, email, password } }),
+
+        /**
+         * Authenticate existing user.
+         */
         login: (email: string, password: string) =>
             request('/auth/login', { method: 'POST', body: { email, password } }),
+
+        /**
+         * Clear session (removes auth cookie).
+         */
         logout: () => request('/auth/logout', { method: 'POST' }),
+
+        /**
+         * Verify current session and return user data.
+         */
         me: () => request<{ user: User }>('/auth/me'),
     },
+
     conversations: {
+        /**
+         * List all chats for the current user.
+         */
         list: () => request<{ conversations: Conversation[] }>('/conversations'),
+
+        /**
+         * Start a new chat session.
+         */
         create: (title?: string, category?: string) =>
             request<{ conversation: Conversation }>('/conversations', { method: 'POST', body: { title, category } }),
+
+        /**
+         * Fetch a specific conversation by ID.
+         */
         get: (id: string) => request<{ conversation: Conversation }>(`/conversations/${id}`),
+
+        /**
+         * Delete an entire conversation thread.
+         */
         delete: (id: string) => request(`/conversations/${id}`, { method: 'DELETE' }),
     },
+
     messages: {
+        /**
+         * Fetch message history for a chat.
+         */
         list: (conversationId: string) =>
             request<{ messages: Message[] }>(`/conversations/${conversationId}/messages`),
+
+        /**
+         * Send a user message (supports multimodal data and web search).
+         */
         send: (conversationId: string, content: string, imageUrl?: string, pdfData?: string, isSearchEnabled?: boolean) =>
             request<{ userMessage: Message; assistantMessage: Message; wasSearched?: boolean }>(
                 `/conversations/${conversationId}/messages`,
                 { method: 'POST', body: { content, imageUrl, pdfData, isSearchEnabled } }
             ),
     },
+
     user: {
+        /**
+         * Fetch full user profile data.
+         */
         get: () => request<{ user: User }>('/user'),
+
+        /**
+         * Update profile or password.
+         */
         update: (data: Partial<User & { currentPassword?: string; newPassword?: string }>) =>
             request<{ user: User }>('/user', { method: 'PUT', body: data }),
-        delete: () => request('/user', { method: 'DELETE' }),
+
+        /**
+         * Permanent account deletion. Use with caution.
+         */
+        deleteAccount: () => request('/user', { method: 'DELETE' }),
     },
 };
 

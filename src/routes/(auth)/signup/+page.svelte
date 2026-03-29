@@ -3,24 +3,31 @@
 	import { api } from '$lib/api';
 	import { Sparkles, Loader2 } from '@lucide/svelte';
 
+	// local state for the form - keeping it simple
 	let username = $state('');
 	let email = $state('');
 	let password = $state('');
 	let error = $state('');
 	let isLoading = $state(false);
 
-	async function handleSignup(e: Event) {
+	async function onUserSignUp(e: Event) {
 		e.preventDefault();
-		if (!username || !email || !password) return;
+		
+		// basic guard - browser validation should catch most of this though
+		if (!username.trim() || !email.trim() || !password) return;
 
 		isLoading = true;
 		error = '';
 
 		try {
+			// hit the signup endpoint and hope for the best
 			await api.auth.signup(username, email, password);
+			
+			// if we're here, we're good to go. redirect to main app.
 			goto('/chat');
 		} catch (err: any) {
-			error = err.message || 'Signup failed';
+			// note: backend should return a 'message' field on error
+			error = err.message || 'Something went wrong during signup.';
 		} finally {
 			isLoading = false;
 		}
@@ -43,7 +50,7 @@
 		</div>
 
 		<!-- Signup Form -->
-		<form onsubmit={handleSignup} class="glass-panel rounded-3xl p-8 space-y-5 shadow-2xl">
+		<form onsubmit={onUserSignUp} class="glass-panel rounded-3xl p-8 space-y-5 shadow-2xl">
 			{#if error}
 				<div class="p-3.5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm flex items-center gap-2 animate-fade-in">
 					<div class="w-1.5 h-1.5 rounded-full bg-red-500"></div>

@@ -5,16 +5,20 @@ import pool from '../db/index.js';
 
 const router = Router();
 
-// POST /api/auth/signup
+/**
+ * @route   POST /api/auth/signup
+ * @desc    Registrations for new users. Using 12 rounds for bcrypt as a balance of speed/security.
+ */
 router.post('/signup', async (req, res) => {
     try {
         const { username, email, password } = req.body;
 
+        // basic validation - nothing fancy for now
         if (!username || !email || !password) {
             return res.status(400).json({ error: 'All fields are required' });
         }
 
-        // Check if user exists
+        // prevent duplicate registrations
         const existing = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
         if (existing.rows.length > 0) {
             return res.status(409).json({ error: 'Email already registered' });
@@ -22,33 +26,46 @@ router.post('/signup', async (req, res) => {
 
         const passwordHash = await bcrypt.hash(password, 12);
 
+        // TODO: maybe add a way to choose plan on signup later? for now everyone is 'free'
         const result = await pool.query(
             'INSERT INTO users (username, email, password_hash) VALUES ($1, $2, $3) RETURNING id, username, email, plan, created_at',
             [username, email, passwordHash]
         );
 
         const user = result.rows[0];
+
+        // ensure we have a secret, otherwise jwt.sign will definitely blow up
+        const secret = process.env.JWT_SECRET;
+        if (!secret) {
+            throw new Error('JWT_SECRET is missing in environment variables');
+        }
+
         const token = jwt.sign(
             { userId: user.id, email: user.email },
-            process.env.JWT_SECRET,
+            secret,
             { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
         );
 
+        // secure cookie config - ltr we might need more granular control for dev/prod
         res.cookie('token', token, {
             httpOnly: true,
             secure: process.env.COOKIE_SECURE === 'true' || (process.env.NODE_ENV === 'production' && process.env.COOKIE_SECURE !== 'false'),
             sameSite: 'lax',
-            maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+            maxAge: 7 * 24 * 60 * 60 * 1000,
         });
 
         res.status(201).json({ user, token });
     } catch (err) {
-        console.error('Signup error:', err);
+        // NOTE: adding detailed logging here for now to catch the 500 error user reported
+        console.error('[AUTH_SIGNUP_ERROR]:', err.message, err.stack);
         res.status(500).json({ error: 'Internal server error' });
     }
 });
 
-// POST /api/auth/login
+/**
+ * @route   POST /api/auth/login
+ * @desc    Authenticate user & get token
+ */
 router.post('/login', async (req, res) => {
     try {
         const { email, password } = req.body;
@@ -73,9 +90,12 @@ router.post('/login', async (req, res) => {
             return res.status(401).json({ error: 'Invalid credentials' });
         }
 
+        const secret = process.env.JWT_SECRET;
+        if (!secret) throw new Error('JWT_SECRET not configured');
+
         const token = jwt.sign(
             { userId: user.id, email: user.email },
-            process.env.JWT_SECRET,
+            secret,
             { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
         );
 
@@ -89,18 +109,18 @@ router.post('/login', async (req, res) => {
         const { password_hash, ...safeUser } = user;
         res.json({ user: safeUser, token });
     } catch (err) {
-        console.error('Login error:', err);
+        console.error('[AUTH_LOGIN_ERROR]:', err);
         res.status(500).json({ error: 'Internal server error' });
     }
 });
 
-// POST /api/auth/logout
 router.post('/logout', (_req, res) => {
+    // clear the auth cookie
     res.clearCookie('token');
-    res.json({ message: 'Logged out' });
+    res.json({ message: 'Logged out successfully' });
 });
 
-// GET /api/auth/me – verify current session
+// fetch current user session
 router.get('/me', async (req, res) => {
     const token = req.cookies?.token || req.headers.authorization?.replace('Bearer ', '');
 
@@ -109,19 +129,22 @@ router.get('/me', async (req, res) => {
     }
 
     try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const secret = process.env.JWT_SECRET;
+        if (!secret) throw new Error('JWT_SECRET missing');
+
+        const decoded = jwt.verify(token, secret);
         const result = await pool.query(
             'SELECT id, username, email, plan, avatar_url, created_at FROM users WHERE id = $1',
             [decoded.userId]
         );
 
         if (result.rows.length === 0) {
-            return res.status(401).json({ error: 'User not found' });
+            return res.status(401).json({ error: 'User session invalid' });
         }
 
         res.json({ user: result.rows[0] });
-    } catch {
-        return res.status(401).json({ error: 'Invalid token' });
+    } catch (err) {
+        return res.status(401).json({ error: 'Session expired or invalid token' });
     }
 });
 

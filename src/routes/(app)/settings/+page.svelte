@@ -144,7 +144,8 @@
 
 	async function deleteAccount() {
 		try {
-			await api.user.delete();
+			// perform permanent deletion
+			await api.user.deleteAccount();
 			goto('/login');
 		} catch (err: any) {
 			errorMessage = err.message || 'Failed to delete account';
