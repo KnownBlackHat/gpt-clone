@@ -29,6 +29,14 @@
 		isEditing = true;
 	}
 
+	function countWords(text: string) {
+		if (!text) return 0;
+		return text.trim().split(/\s+/).filter(Boolean).length;
+	}
+
+	let wordCount = $derived(countWords(message.content));
+	let hasEnoughContext = $derived(wordCount >= 50 || !!message.pdf_text);
+
 	function cancelEditing() {
 		isEditing = false;
 	}
@@ -246,7 +254,7 @@
 					<Share2 size={14} class="opacity-50 group-hover/btn:opacity-100 transition-opacity pointer-events-none" />
 				</button>
 				
-				{#if onGenerateQuiz}
+				{#if onGenerateQuiz && hasEnoughContext}
 					<button
 						onclick={() => onGenerateQuiz(message.id)}
 						class="p-1.5 px-2.5 rounded-lg bg-niva-accent/10 border border-niva-accent/20 text-[10px] font-bold text-niva-accent hover:bg-niva-accent/20 transition-all cursor-pointer flex items-center gap-1.5 ml-2"
@@ -259,11 +267,11 @@
 			</div>
 		{/if}
 
-		{#if message.pdf_text}
+		{#if message.pdf_text && hasEnoughContext}
 			<div class="mt-3 p-3 rounded-2xl glass-panel border border-niva-accent/20 flex items-center justify-between group/pdf niva-glow-sm">
 				<div class="flex items-center gap-3">
 					<div class="w-10 h-10 rounded-xl bg-niva-accent/10 flex items-center justify-center text-niva-accent">
-						<FileText size={20} />
+						<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-file-text"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>
 					</div>
 					<div>
 						<p class="text-xs font-bold text-niva-text">Document Analyzed</p>

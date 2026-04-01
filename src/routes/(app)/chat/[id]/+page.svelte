@@ -2,6 +2,7 @@
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import { api, type Message } from '$lib/api';
+	import { ui } from '$lib/stores/ui';
 	import {
 		Send,
 		Sparkles,
@@ -39,6 +40,15 @@
 	let isGroupVisible = $state(false);
 	let isConvOwner = $state(false);
 	let isGroupConv = $state(false);
+
+	function countWords(text: string) {
+		if (!text) return 0;
+		return text.trim().split(/\s+/).filter(Boolean).length;
+	}
+
+	let totalWords = $derived(messages.reduce((acc, m) => acc + countWords(m.content), 0));
+	let hasPDF = $derived(messages.some(m => !!m.pdf_text));
+	let canGenerateQuiz = $derived(totalWords >= 50 || hasPDF);
 
 	// Auto-resize textarea
 	$effect(() => {
@@ -239,7 +249,7 @@
 				errorMessage = "File is too large for the server to process. Please try a smaller file.";
 			} else {
 				errorMessage = err.message || "Failed to send message. Please try again.";
-				alert(errorMessage);
+				ui.toast(errorMessage, 'error');
 			}
 		} finally {
 			isLoading = false;
@@ -326,18 +336,18 @@
 			try {
 				if (navigator.clipboard && window.isSecureContext) {
 					await navigator.clipboard.writeText(shareUrl);
-					alert("Share link copied to clipboard!");
+					ui.toast("Share link copied to clipboard!", 'success');
 				} else {
 					throw new Error("Clipboard API unavailable");
 				}
 			} catch (copyErr) {
 				console.warn("Clipboard copy failed, showing link instead:", copyErr);
-				prompt("Copy your share link:", shareUrl);
+				await ui.alert(`Copy your share link: ${shareUrl}`, 'Link Copied');
 			}
 		} catch (err: any) {
 			console.error("Share failed:", err);
 			errorMessage = err.message || "Failed to generate share link.";
-			alert(errorMessage);
+			ui.toast(errorMessage, 'error');
 		} finally {
 			isLoading = false;
 		}
@@ -345,13 +355,13 @@
 
 	async function handleRename() {
 		if (!conversationId) return;
-		const newTitle = prompt('Enter new conversation title:', title);
+		const newTitle = await ui.prompt('Enter new conversation title:', 'Rename Chat', title);
 		if (newTitle && newTitle !== title) {
 			try {
 				await api.conversations.rename(conversationId, newTitle);
 				title = newTitle;
 			} catch {
-				alert('Failed to rename conversation.');
+				ui.toast('Failed to rename conversation.', 'error');
 			}
 		}
 		isMenuOpen = false;
@@ -359,12 +369,13 @@
 
 	async function handleDelete() {
 		if (!conversationId) return;
-		if (confirm('Are you sure you want to delete this conversation?')) {
+		if (await ui.confirm('Are you sure you want to delete this conversation?', 'Delete Chat', 'Delete', 'Keep')) {
 			try {
 				await api.conversations.delete(conversationId);
 				goto('/chat');
 			} catch (err: any) {
 				errorMessage = err.message || "Failed to delete conversation.";
+				ui.toast(errorMessage, 'error');
 			}
 		}
 		isMenuOpen = false;
@@ -431,10 +442,12 @@
 							<Share2 size={14} class="text-niva-text-secondary" />
 							Share Chat
 						</button>
-						<button onclick={handleGenerateQuiz} class="w-full flex items-center gap-2 px-3 py-2 text-xs text-niva-accent hover:bg-niva-accent/10 rounded-lg transition-colors cursor-pointer text-left font-bold">
-							<LayoutList size={14} />
-							Generate Quiz
-						</button>
+						{#if canGenerateQuiz}
+							<button onclick={handleGenerateQuiz} class="w-full flex items-center gap-2 px-3 py-2 text-xs text-niva-accent hover:bg-niva-accent/10 rounded-lg transition-colors cursor-pointer text-left font-bold">
+								<LayoutList size={14} />
+								Generate Quiz
+							</button>
+						{/if}
 						<button onclick={handleRename} class="w-full flex items-center gap-2 px-3 py-2 text-xs text-niva-text hover:bg-white/5 rounded-lg transition-colors cursor-pointer text-left">
 							<Edit2 size={14} class="text-niva-text-secondary" />
 							Rename Chat

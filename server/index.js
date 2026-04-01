@@ -91,10 +91,27 @@ async function runMigrations() {
             );
         `);
 
+        // Create quizzes table for persistence
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS quizzes (
+                id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+                user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                title TEXT NOT NULL,
+                topic TEXT,
+                difficulty TEXT,
+                questions JSONB NOT NULL,
+                score INTEGER,
+                total_questions INTEGER,
+                grade TEXT,
+                created_at TIMESTAMPTZ DEFAULT NOW()
+            );
+        `);
+
         // Create indexes
         await pool.query(`
             CREATE INDEX IF NOT EXISTS idx_conv_members_conv ON conversation_members(conversation_id);
             CREATE INDEX IF NOT EXISTS idx_conv_members_user ON conversation_members(user_id);
+            CREATE INDEX IF NOT EXISTS idx_quizzes_user_id ON quizzes(user_id);
         `);
 
         console.log('✦ [DB] Migrations applied successfully');

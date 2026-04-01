@@ -11,6 +11,7 @@
 		Sparkles,
 		LayoutList,
 	} from '@lucide/svelte';
+	import NivaAlert from '$lib/components/NivaAlert.svelte';
 
 	let { children } = $props();
 	let currentPath = $derived($page.url.pathname);
@@ -120,4 +121,7 @@
 			</a>
 		{/each}
 	</nav>
+	
+	<!-- Global UI Components -->
+	<NivaAlert />
 </div>

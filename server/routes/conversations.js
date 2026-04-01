@@ -31,7 +31,11 @@ router.post('/:id/archive', async (req, res) => {
     try {
         const { id } = req.params;
         const result = await pool.query(
-            'UPDATE conversations SET is_archived = NOT is_archived, updated_at = NOW() WHERE id = $1 AND user_id = $2 RETURNING is_archived',
+            `UPDATE conversations 
+             SET is_archived = NOT is_archived, updated_at = NOW() 
+             WHERE id = $1 
+               AND (user_id = $2 OR id IN (SELECT conversation_id FROM conversation_members WHERE user_id = $2))
+             RETURNING is_archived`,
             [id, req.user.userId]
         );
 
@@ -65,7 +69,9 @@ router.post('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
     try {
         const result = await pool.query(
-            'SELECT * FROM conversations WHERE id = $1 AND user_id = $2',
+            `SELECT * FROM conversations 
+             WHERE id = $1 
+               AND (user_id = $2 OR id IN (SELECT conversation_id FROM conversation_members WHERE user_id = $2))`,
             [req.params.id, req.user.userId]
         );
         if (result.rows.length === 0) {
@@ -120,7 +126,9 @@ router.post('/:id/share', async (req, res) => {
         const { id } = req.params;
         // 1. Ensure conversation exists and belongs to user
         const conv = await pool.query(
-            'SELECT share_id FROM conversations WHERE id = $1 AND user_id = $2',
+            `SELECT share_id FROM conversations 
+             WHERE id = $1 
+               AND (user_id = $2 OR id IN (SELECT conversation_id FROM conversation_members WHERE user_id = $2))`,
             [id, req.user.userId]
         );
         if (conv.rows.length === 0) {

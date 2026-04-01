@@ -126,8 +126,9 @@
 		grade: string;
 		timestamp: number;
 	}
-	let quizHistory = $state<QuizResult[]>([]);
+	let quizHistory = $state<Quiz[]>([]);
 	let showHistory = $state(false);
+	let isLoadingHistory = $state(false);
 
 	const currentQuestion = $derived(questions[currentIndex]);
 
@@ -229,12 +230,41 @@
 		}
 	}
 
+	async function loadHistory() {
+		try {
+			isLoadingHistory = true;
+			const data = await api.quiz.getHistory();
+			quizHistory = data.history;
+		} catch (err) {
+			console.error('Failed to load quiz history:', err);
+		} finally {
+			isLoadingHistory = false;
+		}
+	}
+
+	async function saveHistory(result: {
+		title: string;
+		topic: string;
+		difficulty: string;
+		questions: QuizQuestion[];
+		score: number;
+		total_questions: number;
+		grade: string;
+	}) {
+		try {
+			await api.quiz.save(result);
+			await loadHistory();
+		} catch (err) {
+			console.error('Failed to save quiz to database:', err);
+		}
+	}
+
 	function handleOptionSelect(index: number) {
 		if (selectedOption !== null) return;
 		stopTimer();
 		selectedOption = index;
 
-		const isCorrect = index === currentQuestion.correctIndex;
+		const isCorrect = index === currentQuestion?.correctIndex;
 		if (isCorrect) {
 			score++;
 			streak++;
@@ -250,7 +280,7 @@
 		}];
 	}
 
-	function nextQuestion() {
+	async function nextQuestion() {
 		if (currentIndex < questions.length - 1) {
 			currentIndex++;
 			selectedOption = null;
@@ -258,17 +288,35 @@
 		} else {
 			stopTimer();
 			const pct = Math.round((score / questions.length) * 100);
-			const result: QuizResult = {
+			await saveHistory({
 				title: quizTitle,
-				score,
-				total: questions.length,
+				topic,
 				difficulty,
-				grade: getGrade(pct),
-				timestamp: Date.now(),
-			};
-			quizHistory = [result, ...quizHistory].slice(0, 20);
-			saveHistory();
+				questions,
+				score,
+				total_questions: questions.length,
+				grade: getGrade(pct)
+			});
 			state = 'summary';
+		}
+	}
+	async function viewQuiz(id: string) {
+		try {
+			state = 'summary';
+			const data = await api.quiz.getById(id);
+			quizTitle = data.quiz.title;
+			questions = data.quiz.questions;
+			score = data.quiz.score;
+			// For past quizzes, we just show all solutions
+			showHistory = true;
+			showSolutions = true;
+			answers = data.quiz.questions.map((q, i) => ({
+				questionIndex: i,
+				selectedIndex: -1, // We don't store individual selections yet, just the score
+				isCorrect: true // Placeholder
+			}));
+		} catch (err) {
+			console.error('Failed to view quiz:', err);
 		}
 	}
 
@@ -563,16 +611,19 @@
 							</div>
 							<div class="space-y-2 max-h-48 overflow-y-auto niva-scrollbar">
 								{#each quizHistory as result}
-									{@const pct = Math.round((result.score / result.total) * 100)}
-									<div class="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5">
+									{@const pct = Math.round((result.score / result.total_questions) * 100)}
+									<button 
+										onclick={() => viewQuiz(result.id)}
+										class="w-full flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 transition-all cursor-pointer text-left"
+									>
 										<div class="min-w-0 flex-1 mr-3">
 											<p class="text-xs font-medium truncate">{result.title}</p>
 											<p class="text-[10px] text-niva-text-secondary mt-0.5">
-												{result.score}/{result.total} · {difficultyMeta[result.difficulty].label}
+												{result.score}/{result.total_questions} · {difficultyMeta[result.difficulty as Difficulty].label}
 											</p>
 										</div>
 										<span class="text-lg font-black {getGradeColor(result.grade)} shrink-0">{result.grade}</span>
-									</div>
+									</button>
 								{/each}
 							</div>
 						</div>

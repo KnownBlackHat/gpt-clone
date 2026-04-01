@@ -136,4 +136,51 @@ Ensure there are exactly ${amount} questions in total.`;
     }
 });
 
+// GET /api/quiz/history
+router.get('/history', async (req, res) => {
+    try {
+        const result = await pool.query(
+            'SELECT id, title, topic, difficulty, score, total_questions, grade, created_at FROM quizzes WHERE user_id = $1 ORDER BY created_at DESC',
+            [req.user.userId]
+        );
+        res.json({ history: result.rows });
+    } catch (err) {
+        console.error('Get quiz history error:', err);
+        res.status(500).json({ error: 'Failed to fetch quiz history' });
+    }
+});
+
+// POST /api/quiz/save
+router.post('/save', async (req, res) => {
+    try {
+        const { title, topic, difficulty, questions, score, total_questions, grade } = req.body;
+        const result = await pool.query(
+            'INSERT INTO quizzes (user_id, title, topic, difficulty, questions, score, total_questions, grade) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
+            [req.user.userId, title, topic, difficulty, JSON.stringify(questions), score, total_questions, grade]
+        );
+        res.status(201).json({ quiz: result.rows[0] });
+    } catch (err) {
+        console.error('Save quiz error:', err);
+        res.status(500).json({ error: 'Failed to save quiz' });
+    }
+});
+
+// GET /api/quiz/:id
+router.get('/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const result = await pool.query(
+            'SELECT * FROM quizzes WHERE id = $1 AND user_id = $2',
+            [id, req.user.userId]
+        );
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Quiz not found' });
+        }
+        res.json({ quiz: result.rows[0] });
+    } catch (err) {
+        console.error('Get quiz details error:', err);
+        res.status(500).json({ error: 'Failed to fetch quiz details' });
+    }
+});
+
 export default router;

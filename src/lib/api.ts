@@ -232,6 +232,33 @@ export const api = {
                 method: 'POST',
                 body: params,
             }),
+
+        /**
+         * Fetch user's persistent quiz history.
+         */
+        getHistory: () => request<{ history: Quiz[] }>('/quiz/history'),
+
+        /**
+         * Save a completed quiz result.
+         */
+        save: (params: {
+            title: string;
+            topic: string;
+            difficulty: string;
+            questions: QuizQuestion[];
+            score: number;
+            total_questions: number;
+            grade: string;
+        }) =>
+            request<{ quiz: Quiz }>('/quiz/save', {
+                method: 'POST',
+                body: params,
+            }),
+
+        /**
+         * Fetch a specific quiz attempt.
+         */
+        getById: (id: string) => request<{ quiz: Quiz }>(`/quiz/${id}`),
     },
 
     groupChat: {
@@ -284,6 +311,19 @@ export interface User {
     email: string;
     plan: string;
     avatar_url: string | null;
+    created_at: string;
+}
+
+export interface Quiz {
+    id: string;
+    user_id: string;
+    title: string;
+    topic: string;
+    difficulty: string;
+    questions: QuizQuestion[];
+    score: number;
+    total_questions: number;
+    grade: string;
     created_at: string;
 }
 

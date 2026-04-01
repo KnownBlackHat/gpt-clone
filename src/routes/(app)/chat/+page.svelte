@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { api, type Conversation, type Message } from '$lib/api';
+	import { ui } from '$lib/stores/ui';
 	import {
 		Send,
 		Sparkles,
@@ -43,6 +44,15 @@
 	let groupTitle = $state('');
 	let groupEmails = $state('');
 	let isCreatingGroup = $state(false);
+
+	function countWords(text: string) {
+		if (!text) return 0;
+		return text.trim().split(/\s+/).filter(Boolean).length;
+	}
+
+	let totalWords = $derived(messages.reduce((acc, m) => acc + countWords(m.content), 0));
+	let hasPDF = $derived(messages.some(m => !!m.pdf_text));
+	let canGenerateQuiz = $derived(totalWords >= 50 || hasPDF);
 
 	// Auto-resize textarea
 	$effect(() => {
@@ -255,7 +265,7 @@
 			);
 		} catch (err: any) {
 			messages = messages.filter((m) => m.id !== tempUserMsg.id && m.id !== assistantMsg.id);
-			alert(err.message || "Failed to send message. Please try again.");
+			ui.toast(err.message || "Failed to send message. Please try again.", 'error');
 		} finally {
 			isLoading = false;
 			isTyping = false;
@@ -298,7 +308,7 @@
 		const conv = conversations.find(c => c.id === id);
 		if (!conv) return;
 		
-		const newTitle = prompt('Enter new conversation title:', conv.title);
+		const newTitle = await ui.prompt('Enter new conversation title:', 'Rename Chat', conv.title);
 		if (newTitle && newTitle !== conv.title) {
 			try {
 				await api.conversations.rename(id, newTitle);
@@ -306,7 +316,7 @@
 					c.id === id ? { ...c, title: newTitle } : c
 				);
 			} catch {
-				alert('Failed to rename conversation.');
+				ui.toast('Failed to rename conversation.', 'error');
 			}
 		}
 		activeMenuId = null;
@@ -328,7 +338,7 @@
 				await handleSend();
 			}
 		} catch (err: any) {
-			alert(err.message || "Failed to edit message.");
+			ui.toast(err.message || "Failed to edit message.", 'error');
 		} finally {
 			isLoading = false;
 		}
@@ -353,7 +363,7 @@
 				await handleSend();
 			}
 		} catch (err: any) {
-			alert(err.message || "Failed to retry message.");
+			ui.toast(err.message || "Failed to retry message.", 'error');
 		} finally {
 			isLoading = false;
 		}
@@ -367,17 +377,17 @@
 			try {
 				if (navigator.clipboard && window.isSecureContext) {
 					await navigator.clipboard.writeText(shareUrl);
-					alert("Share link copied to clipboard!");
+					ui.toast("Share link copied to clipboard!", 'success');
 				} else {
 					throw new Error("Clipboard API unavailable");
 				}
 			} catch (copyErr) {
 				console.warn("Clipboard copy failed, showing link instead:", copyErr);
-				prompt("Copy your share link:", shareUrl);
+				await ui.alert(`Copy your share link: ${shareUrl}`, 'Link Copied');
 			}
 		} catch (err: any) {
 			console.error("Share failed:", err);
-			alert(err.message || 'Failed to generate share link.');
+			ui.toast(err.message || 'Failed to generate share link.', 'error');
 		}
 		activeMenuId = null;
 	}
@@ -390,13 +400,13 @@
 			try {
 				if (navigator.clipboard && window.isSecureContext) {
 					await navigator.clipboard.writeText(joinUrl);
-					alert("Group Invite link copied to clipboard! Anyone with this link can now join and participate.");
+					ui.toast("Group Invite link copied to clipboard!", 'success');
 				} else {
 					throw new Error("Clipboard API unavailable");
 				}
 			} catch (copyErr) {
 				console.warn("Clipboard copy failed, showing link instead:", copyErr);
-				prompt("Copy your invite link:", joinUrl);
+				await ui.alert(`Copy your invite link: ${joinUrl}`, 'Link Copied');
 			}
 
 			// Optimistically update the UI if it was not already a group
@@ -405,7 +415,7 @@
 			);
 		} catch (err: any) {
 			console.error("Invite failed:", err);
-			alert(err.message || 'Failed to generate invite link.');
+			ui.toast(err.message || 'Failed to generate invite link.', 'error');
 		}
 		activeMenuId = null;
 	}
@@ -454,7 +464,7 @@
 			sessionStorage.setItem('niva_quiz_context', context);
 			goto('/quiz?from_chat=true');
 		} else {
-			alert("Not enough conversation context to generate a quiz.");
+			ui.toast("Not enough conversation context to generate a quiz.", 'error');
 		}
 	}
 
@@ -479,11 +489,11 @@
 				sessionStorage.setItem('niva_quiz_context', context);
 				goto('/quiz?from_chat=true');
 			} else {
-				alert("This conversation has no messages yet.");
+				ui.toast("This conversation has no messages yet.", 'info');
 			}
 		} catch (err) {
 			console.error("Failed to generate quiz from sidebar:", err);
-			alert("Failed to capture conversation context.");
+			ui.toast("Failed to capture conversation context.", 'error');
 		}
 	}
 </script>
@@ -552,10 +562,12 @@
 									<Share2 size={16} class="text-niva-text-secondary pointer-events-none" />
 									Share View
 								</button>
-								<button onclick={() => handleSidebarGenerateQuiz(conv.id)} class="w-full flex items-center gap-2.5 px-3 py-2.5 text-xs text-niva-accent bg-niva-accent/5 hover:bg-niva-accent/10 rounded-xl transition-colors cursor-pointer text-left font-bold">
-									<LayoutList size={16} class="pointer-events-none" />
-									Generate Quiz
-								</button>
+								{#if (activeConversationId === conv.id ? canGenerateQuiz : (conv.message_count || 0) > 3)}
+									<button onclick={() => handleSidebarGenerateQuiz(conv.id)} class="w-full flex items-center gap-2.5 px-3 py-2.5 text-xs text-niva-accent bg-niva-accent/5 hover:bg-niva-accent/10 rounded-xl transition-colors cursor-pointer text-left font-bold">
+										<LayoutList size={16} class="pointer-events-none" />
+										Generate Quiz
+									</button>
+								{/if}
 								<button onclick={() => handleInviteLink(conv.id)} class="w-full flex items-center gap-2.5 px-3 py-2.5 text-xs text-niva-text hover:bg-white/5 rounded-xl transition-colors cursor-pointer text-left">
 									<UserPlus size={14} class="text-niva-text-secondary" />
 									Invite by Link
