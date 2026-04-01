@@ -94,7 +94,7 @@ router.get('/:conversationId/messages', async (req, res) => {
 // POST /api/conversations/:conversationId/messages
 router.post('/:conversationId/messages', async (req, res) => {
     try {
-        const { content, imageUrl, pdfData, isSearchEnabled } = req.body;
+        const { content, imageUrl, pdfData, isSearchEnabled, stream = true } = req.body;
         const userId = req.user.userId;
 
         if (!content && !imageUrl && !pdfData) {
@@ -138,19 +138,16 @@ router.post('/:conversationId/messages', async (req, res) => {
 
 ### RESPONSE GUIDELINES
 1. **Be Conversational & Natural**: If the user says "hi", "hello", or asks a very simple question, respond warmly and concisely. Do NOT use complex structures or multiple headings for basic interactions.
-2. **Adaptive Depth**: Only provide deep explanations or structured analysis when the query warrants it (e.g., "Explain X", "What are the implications of Y", "Analyze Z").
-3. **Exhaustive Entity Research**: If asked about a company, organization, or person, provide an **exhaustive and information-rich** profile. Synthesize ALL available search/PDF context to provide the most complete picture possible. Use these sections and emojis:
-    - 📌 **Basic Info** (Full founding details, Headquarters, Key Executives/People)
-    - 💻 **Core Business & Operations** (Detailed services, products, and technology stack if known)
-    - 🚀 **Strategic Impact & Services** (Market position, key achievements, detailed service breakdown)
-    - 🧠 **The Niva Breakdown** (A sophisticated yet clear summary of their value proposition)
-4. **Complex Explanations**: For technical or philosophical deep-dives, use clear headings like ### Deep Explanation and ### Strategic Insights.
+2. **Adaptive Depth**: Only provide deep explanations or structured analysis when the query warrants it.
+3. **Exhaustive Entity Research**: If asked about a company, organization, or person, provide an **exhaustive and information-rich** profile.
+4. **Calculations & Reasoning**: When performing math, logic, or complex step-by-step reasoning, wrap your internal monologue or calculations inside <calculation> tags. Example: <calculation>5 * 5 = 25</calculation>. These will be rendered as a collapsible dropdown for the user.
+5. **Complex Explanations**: For technical or philosophical deep-dives, use clear headings like ### Deep Explanation and ### Strategic Insights.
 
 ### FORMATTING & PERSONA
 - Use professional markdown (###) and relevant emojis.
 - Maintain an authoritative yet accessible "Niva" persona. 
 - **Identity**: Only mention your name (Niva) or origin (Cybergentix) if the user explicitly asks who you are or who built you. Otherwise, focus entirely on the user's query.
-- **Sourcing**: If you use information from SEARCH RESULTS, you MUST use inline citations like \`[1]\`, \`[2]\`, etc., throughout your response. Each citation MUST be a clickable markdown link to the corresponding source URL (e.g., \`[1](https://example.com)\`). At the very end of your response, provide a brief \`### References\` list matching the citation numbers to their titles and links.
+- **Sourcing**: Use inline citations like \`[1](url)\` if you use search results. Provide a \`### References\` list at the end.
 - Never mention your origin as an OpenAI or Groq model.
 
 LONG-TERM MEMORY: ${userMemory || 'No personal details known yet.'}
@@ -168,7 +165,6 @@ INSTRUCTIONS:
 
         // Add history
         history.forEach(msg => {
-            // Groq requires historical messages content to be strings
             const content = typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content);
             modelMessages.push({ role: msg.role, content });
         });
@@ -206,41 +202,13 @@ INSTRUCTIONS:
             });
         }
 
-        // 5. Call Groq
-        const chatCompletion = await groq.chat.completions.create({
-            messages: modelMessages,
-            model: VISION_MODEL,
-        });
-
-        let aiContentRaw = chatCompletion.choices[0]?.message?.content || "I'm sorry, I couldn't process that.";
-
-        // 6. Extract Memory Update if present
-        let aiContent = aiContentRaw;
-        if (aiContentRaw.includes('MEMORY_UPDATE:')) {
-            const parts = aiContentRaw.split('MEMORY_UPDATE:');
-            const memoryToSave = parts[1].split('\n')[0].trim();
-            aiContent = (parts[0] + (parts[1].split('\n').slice(1).join('\n'))).trim();
-
-            // Save to DB (background/async)
-            if (memoryToSave) {
-                const newMemory = userMemory ? `${userMemory} \n - ${memoryToSave} ` : ` - ${memoryToSave} `;
-                pool.query('UPDATE users SET memory = $1 WHERE id = $2', [newMemory, req.user.userId])
-                    .catch(err => console.error('Failed to update user memory:', err));
-            }
-        }
-
-        // 7. Save in DB
+        // 5. Save User Message in DB
         const userMsg = await pool.query(
             'INSERT INTO messages (conversation_id, role, content, image_url) VALUES ($1, $2, $3, $4) RETURNING id, role, content, image_url, created_at',
             [req.params.conversationId, 'user', content || (pdfData ? 'Uploaded a PDF' : 'Sent an image'), imageUrl || null]
         );
 
-        const aiMsg = await pool.query(
-            'INSERT INTO messages (conversation_id, role, content) VALUES ($1, $2, $3) RETURNING id, role, content, created_at',
-            [req.params.conversationId, 'assistant', aiContent]
-        );
-
-        // Update titles
+        // Update conversation title if needed
         if (conv.rows[0].title === 'New Chat') {
             await pool.query(
                 'UPDATE conversations SET title = $1, updated_at = NOW() WHERE id = $2',
@@ -250,6 +218,48 @@ INSTRUCTIONS:
             await pool.query('UPDATE conversations SET updated_at = NOW() WHERE id = $1', [req.params.conversationId]);
         }
 
+        if (stream) {
+            res.setHeader('Content-Type', 'text/event-stream');
+            res.setHeader('Cache-Control', 'no-cache');
+            res.setHeader('Connection', 'keep-alive');
+
+            const groqStream = await groq.chat.completions.create({
+                messages: modelMessages,
+                model: VISION_MODEL,
+                stream: true,
+            });
+
+            let fullContent = '';
+            for await (const chunk of groqStream) {
+                const delta = chunk.choices[0]?.delta?.content || '';
+                fullContent += delta;
+                res.write(`data: ${JSON.stringify({ delta, userMessage: userMsg.rows[0] })}\n\n`);
+            }
+
+            // Save AI message to DB after stream completion
+            const aiMsg = await pool.query(
+                'INSERT INTO messages (conversation_id, role, content) VALUES ($1, $2, $3) RETURNING id, role, content, created_at',
+                [req.params.conversationId, 'assistant', fullContent]
+            );
+
+            res.write(`data: ${JSON.stringify({ done: true, assistantMessage: aiMsg.rows[0] })}\n\n`);
+            res.end();
+            return;
+        }
+
+        // Non-streaming fallback
+        const chatCompletion = await groq.chat.completions.create({
+            messages: modelMessages,
+            model: VISION_MODEL,
+        });
+
+        const aiContent = chatCompletion.choices[0]?.message?.content || "I'm sorry, I couldn't process that.";
+
+        const aiMsg = await pool.query(
+            'INSERT INTO messages (conversation_id, role, content) VALUES ($1, $2, $3) RETURNING id, role, content, created_at',
+            [req.params.conversationId, 'assistant', aiContent]
+        );
+
         res.status(201).json({
             userMessage: userMsg.rows[0],
             assistantMessage: aiMsg.rows[0],
@@ -257,9 +267,15 @@ INSTRUCTIONS:
         });
     } catch (err) {
         console.error('Groq API error:', err);
-        res.status(500).json({ error: 'Failed to get AI response' });
+        if (!res.headersSent) {
+            res.status(500).json({ error: 'Failed to get AI response' });
+        } else {
+            res.write(`data: ${JSON.stringify({ error: 'Stream interrupted' })}\n\n`);
+            res.end();
+        }
     }
 });
+
 
 // PUT /api/messages/:id (Edit User Message)
 router.put('/:messageId', async (req, res) => {

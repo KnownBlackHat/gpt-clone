@@ -12,7 +12,7 @@ const groq = new Groq({
     apiKey: process.env.GROQ_API_KEY,
 });
 
-const DEFAULT_MODEL = 'llama3-70b-8192'; // Using a reliable large model for JSON generation
+const DEFAULT_MODEL = process.env.QUIZ_MODEL || process.env.VISION_MODEL || 'meta-llama/llama-4-scout-17b-16e-instruct';
 
 router.post('/generate', async (req, res) => {
     try {

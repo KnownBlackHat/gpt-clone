@@ -61,6 +61,45 @@ app.get('/api/health', (_req, res) => {
     res.json({ status: 'ok', name: 'Niva API', version: '1.0.0' });
 });
 
-app.listen(PORT, () => {
-    console.log(`✦ Niva API running on http://localhost:${PORT}`);
+// Auto-migrate database schema on startup
+async function runMigrations() {
+    try {
+        // Ensure uuid-ossp extension exists
+        await pool.query('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"');
+
+        // Add missing columns to conversations
+        await pool.query(`
+            ALTER TABLE conversations ADD COLUMN IF NOT EXISTS share_id UUID DEFAULT NULL;
+            ALTER TABLE conversations ADD COLUMN IF NOT EXISTS is_group BOOLEAN DEFAULT FALSE;
+        `);
+
+        // Create conversation_members table
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS conversation_members (
+                id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+                conversation_id UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+                user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                role VARCHAR(20) DEFAULT 'member' CHECK (role IN ('owner', 'member')),
+                joined_at TIMESTAMPTZ DEFAULT NOW(),
+                UNIQUE(conversation_id, user_id)
+            );
+        `);
+
+        // Create indexes
+        await pool.query(`
+            CREATE INDEX IF NOT EXISTS idx_conv_members_conv ON conversation_members(conversation_id);
+            CREATE INDEX IF NOT EXISTS idx_conv_members_user ON conversation_members(user_id);
+        `);
+
+        console.log('✦ [DB] Migrations applied successfully');
+    } catch (err) {
+        console.error('✦ [DB] Migration warning:', err.message);
+    }
+}
+
+// Start the server after migrations
+runMigrations().then(() => {
+    app.listen(PORT, () => {
+        console.log(`✦ Niva API running on http://localhost:${PORT}`);
+    });
 });

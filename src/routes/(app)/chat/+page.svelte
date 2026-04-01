@@ -191,17 +191,53 @@
 		const currentSearchEnabled = isSearchEnabled;
 		isSearchEnabled = false; // Reset after use
 
+		let assistantMsg: Message = {
+			id: 'assistant-temp-' + Date.now(),
+			role: 'assistant',
+			content: '',
+			created_at: new Date().toISOString(),
+		};
+
 		try {
-			const data = await api.messages.send(activeConversationId!, content, imageUrl || undefined, docUrl || undefined, currentSearchEnabled);
-			// Replace temp message and add AI response
-			messages = messages
-				.filter((m) => m.id !== tempUserMsg.id)
-				.concat([data.userMessage, data.assistantMessage]);
-			scrollToBottom();
-			// Refresh conversation list for updated title
-			loadConversations();
-		} catch {
-			messages = messages.filter((m) => m.id !== tempUserMsg.id);
+			await api.messages.stream(
+				activeConversationId!, 
+				content, 
+				(chunk) => {
+					if (chunk.userMessage && !messages.find(m => m.id === chunk.userMessage?.id)) {
+						messages = messages
+							.filter(m => m.id !== tempUserMsg.id)
+							.concat([chunk.userMessage]);
+					}
+
+					if (chunk.delta) {
+						if (!messages.find(m => m.id === assistantMsg.id)) {
+							messages = [...messages, assistantMsg];
+						}
+						assistantMsg.content += chunk.delta;
+						messages = [...messages];
+						scrollToBottom();
+					}
+
+					if (chunk.done && chunk.assistantMessage) {
+						messages = messages
+							.filter(m => m.id !== assistantMsg.id)
+							.concat([chunk.assistantMessage]);
+						scrollToBottom();
+						// Refresh conversation list for updated title
+						loadConversations();
+					}
+
+					if (chunk.error) {
+						throw new Error(chunk.error);
+					}
+				},
+				imageUrl || undefined, 
+				docUrl || undefined, 
+				currentSearchEnabled
+			);
+		} catch (err: any) {
+			messages = messages.filter((m) => m.id !== tempUserMsg.id && m.id !== assistantMsg.id);
+			alert(err.message || "Failed to send message. Please try again.");
 		} finally {
 			isLoading = false;
 			isTyping = false;
@@ -263,14 +299,20 @@
 			const { shareId } = await api.conversations.share(id);
 			const shareUrl = `${window.location.origin}/share/${shareId}`;
 			
-			if (navigator.clipboard && window.isSecureContext) {
-				await navigator.clipboard.writeText(shareUrl);
-				alert("Share link copied to clipboard!");
-			} else {
-				alert(`Share link: ${shareUrl}`);
+			try {
+				if (navigator.clipboard && window.isSecureContext) {
+					await navigator.clipboard.writeText(shareUrl);
+					alert("Share link copied to clipboard!");
+				} else {
+					throw new Error("Clipboard API unavailable");
+				}
+			} catch (copyErr) {
+				console.warn("Clipboard copy failed, showing link instead:", copyErr);
+				prompt("Copy your share link:", shareUrl);
 			}
-		} catch {
-			alert('Failed to generate share link.');
+		} catch (err: any) {
+			console.error("Share failed:", err);
+			alert(err.message || 'Failed to generate share link.');
 		}
 		activeMenuId = null;
 	}

@@ -186,18 +186,57 @@
 		const currentSearchEnabled = isSearchEnabled;
 		isSearchEnabled = false; // Reset after use
 
+		let assistantMsg: Message = {
+			id: 'assistant-temp-' + Date.now(),
+			role: 'assistant',
+			content: '',
+			created_at: new Date().toISOString(),
+		};
+
 		try {
-			const data = await api.messages.send(conversationId, content, imageUrl || undefined, docUrl || undefined, currentSearchEnabled);
-			messages = messages
-				.filter((m) => m.id !== tempUserMsg.id)
-				.concat([data.userMessage, data.assistantMessage]);
-			scrollToBottom();
+			await api.messages.stream(
+				conversationId, 
+				content, 
+				(chunk) => {
+					if (chunk.userMessage && !messages.find(m => m.id === chunk.userMessage?.id)) {
+						messages = messages
+							.filter(m => m.id !== tempUserMsg.id)
+							.concat([chunk.userMessage]);
+					}
+
+					if (chunk.delta) {
+						if (!messages.find(m => m.id === assistantMsg.id)) {
+							messages = [...messages, assistantMsg];
+						}
+						assistantMsg.content += chunk.delta;
+						// Trigger reactivity for Svelte 5 if needed, 
+						// though assistantMsg is part of messages which is $state.
+						messages = [...messages];
+						scrollToBottom();
+					}
+
+					if (chunk.done && chunk.assistantMessage) {
+						messages = messages
+							.filter(m => m.id !== assistantMsg.id)
+							.concat([chunk.assistantMessage]);
+						scrollToBottom();
+					}
+
+					if (chunk.error) {
+						throw new Error(chunk.error);
+					}
+				},
+				imageUrl || undefined, 
+				docUrl || undefined, 
+				currentSearchEnabled
+			);
 		} catch (err: any) {
-			messages = messages.filter((m) => m.id !== tempUserMsg.id);
+			messages = messages.filter((m) => m.id !== tempUserMsg.id && m.id !== assistantMsg.id);
 			if (err.message.includes('413') || err.message.toLowerCase().includes('large')) {
 				errorMessage = "File is too large for the server to process. Please try a smaller file.";
 			} else {
 				errorMessage = err.message || "Failed to send message. Please try again.";
+				alert(errorMessage);
 			}
 		} finally {
 			isLoading = false;
@@ -266,14 +305,21 @@
 			const { shareId } = await api.conversations.share(conversationId);
 			const shareUrl = `${window.location.origin}/share/${shareId}`;
 			
-			if (navigator.clipboard && window.isSecureContext) {
-				await navigator.clipboard.writeText(shareUrl);
-				alert("Share link copied to clipboard!");
-			} else {
-				errorMessage = `Share link: ${shareUrl}`;
+			try {
+				if (navigator.clipboard && window.isSecureContext) {
+					await navigator.clipboard.writeText(shareUrl);
+					alert("Share link copied to clipboard!");
+				} else {
+					throw new Error("Clipboard API unavailable");
+				}
+			} catch (copyErr) {
+				console.warn("Clipboard copy failed, showing link instead:", copyErr);
+				prompt("Copy your share link:", shareUrl);
 			}
 		} catch (err: any) {
+			console.error("Share failed:", err);
 			errorMessage = err.message || "Failed to generate share link.";
+			alert(errorMessage);
 		} finally {
 			isLoading = false;
 		}

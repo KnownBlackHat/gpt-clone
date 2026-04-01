@@ -17,7 +17,11 @@
 	let isAssistant = $derived(message.role === 'assistant');
 	let copied = $state(false);
 	let isEditing = $state(false);
-	let editContent = $state(message.content);
+	let editContent = $state('');
+
+	$effect(() => {
+		editContent = message.content;
+	});
 
 	function startEditing() {
 		editContent = message.content;
@@ -76,8 +80,28 @@
 	function renderMarkdown(content: string) {
 		if (!content) return '';
 		try {
-			const rawHtml = marked.parse(content) as string;
-			return DOMPurify.sanitize(rawHtml);
+			// First, handle <calculation> tags
+			let processed = content.replace(/<calculation>([\s\S]*?)<\/calculation>/g, (match, calculation) => {
+				return `
+					<details class="niva-calculation-dropdown">
+						<summary>
+							<span class="flex items-center gap-2">
+								<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-niva-accent"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><line x1="8" x2="16" y1="12" y2="12"/><line x1="12" x2="12" y1="8" y2="16"/></svg>
+								Show Calculations
+							</span>
+						</summary>
+						<div class="calculation-content">
+							${marked.parse(calculation.trim())}
+						</div>
+					</details>
+				`;
+			});
+
+			const rawHtml = marked.parse(processed) as string;
+			return DOMPurify.sanitize(rawHtml, {
+				ADD_TAGS: ['details', 'summary'],
+				ADD_ATTR: ['class']
+			});
 		} catch (e) {
 			console.error('Markdown rendering error:', e);
 			return content;
@@ -413,5 +437,59 @@
 	:global(.hljs) {
 		background: transparent !important;
 		padding: 0 !important;
+	}
+
+	:global(.niva-calculation-dropdown) {
+		margin: 1rem 0;
+		border: 1px solid rgba(255, 255, 255, 0.1);
+		border-radius: 12px;
+		overflow: hidden;
+		background: rgba(255, 255, 255, 0.03);
+		transition: all 0.3s ease;
+	}
+
+	:global(.niva-calculation-dropdown[open]) {
+		background: rgba(255, 255, 255, 0.05);
+		border-color: rgba(var(--niva-accent-rgb), 0.2);
+	}
+
+	:global(.niva-calculation-dropdown summary) {
+		padding: 0.75rem 1rem;
+		cursor: pointer;
+		font-size: 0.75rem;
+		font-weight: 700;
+		color: var(--niva-text-secondary);
+		list-style: none;
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		user-select: none;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+	}
+
+	:global(.niva-calculation-dropdown summary::-webkit-details-marker) {
+		display: none;
+	}
+
+	:global(.niva-calculation-dropdown summary:hover) {
+		color: var(--niva-text);
+		background: rgba(255, 255, 255, 0.02);
+	}
+
+	:global(.niva-calculation-dropdown .calculation-content) {
+		padding: 1rem;
+		border-top: 1px solid rgba(255, 255, 255, 0.05);
+		font-size: 0.85rem;
+		line-height: 1.6;
+		color: var(--niva-text);
+	}
+
+	:global(.niva-calculation-dropdown .calculation-content p) {
+		margin-bottom: 0.75rem;
+	}
+
+	:global(.niva-calculation-dropdown .calculation-content p:last-child) {
+		margin-bottom: 0;
 	}
 </style>

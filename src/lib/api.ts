@@ -104,12 +104,66 @@ export const api = {
             request<{ messages: Message[] }>(`/conversations/${conversationId}/messages`),
 
         /**
+         * Send a user message (supports multimodal data and web search) with real-time streaming.
+         */
+        stream: async (
+            conversationId: string,
+            content: string,
+            onChunk: (data: { delta?: string; done?: boolean; userMessage?: Message; assistantMessage?: Message; error?: string }) => void,
+            imageUrl?: string,
+            pdfData?: string,
+            isSearchEnabled?: boolean
+        ) => {
+            const response = await fetch(`${API_BASE}/conversations/${conversationId}/messages`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    // Note: Auth header is added automatically by the request helper, 
+                    // but for fetch we need to handle it. Since request helper uses 
+                    // a private function or common logic, I'll use a direct fetch here 
+                    // and assume cookies/credentials handle it or add the token from localStorage.
+                    'Authorization': `Bearer ${localStorage.getItem('niva_token')}`
+                },
+                body: JSON.stringify({ content, imageUrl, pdfData, isSearchEnabled, stream: true })
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Failed to start stream');
+            }
+
+            const reader = response.body?.getReader();
+            const decoder = new TextDecoder();
+
+            if (!reader) throw new Error('ReadableStream not supported');
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                const chunk = decoder.decode(value, { stream: true });
+                const lines = chunk.split('\n');
+
+                for (const line of lines) {
+                    if (line.startsWith('data: ')) {
+                        try {
+                            const data = JSON.parse(line.slice(6));
+                            onChunk(data);
+                        } catch (e) {
+                            console.error('Failed to parse SSE chunk:', e);
+                        }
+                    }
+                }
+            }
+        },
+
+        /**
          * Send a user message (supports multimodal data and web search).
          */
         send: (conversationId: string, content: string, imageUrl?: string, pdfData?: string, isSearchEnabled?: boolean) =>
             request<{ userMessage: Message; assistantMessage: Message; wasSearched?: boolean }>(
                 `/conversations/${conversationId}/messages`,
-                { method: 'POST', body: { content, imageUrl, pdfData, isSearchEnabled } }
+                { method: 'POST', body: { content, imageUrl, pdfData, isSearchEnabled, stream: false } }
             ),
 
         /**
