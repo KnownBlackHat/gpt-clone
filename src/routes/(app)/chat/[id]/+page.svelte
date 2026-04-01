@@ -22,6 +22,7 @@
 
 	import ChatMessage from '$lib/components/ChatMessage.svelte';
 	import GroupPanel from '$lib/components/GroupPanel.svelte';
+	import { copyToClipboard } from '$lib/utils';
 
 	let conversationId = $derived($page.params.id);
 	let messages = $state<Message[]>([]);
@@ -333,15 +334,11 @@
 			const { shareId } = await api.conversations.share(conversationId);
 			const shareUrl = `${window.location.origin}/share/${shareId}`;
 			
-			try {
-				if (navigator.clipboard && window.isSecureContext) {
-					await navigator.clipboard.writeText(shareUrl);
-					ui.toast("Share link copied to clipboard!", 'success');
-				} else {
-					throw new Error("Clipboard API unavailable");
-				}
-			} catch (copyErr) {
-				console.warn("Clipboard copy failed, showing link instead:", copyErr);
+			const success = await copyToClipboard(shareUrl);
+			if (success) {
+				ui.toast("Share link copied to clipboard!", 'success');
+			} else {
+				console.warn("Clipboard copy completely failed, showing link instead");
 				await ui.alert(`Copy your share link: ${shareUrl}`, 'Link Copied');
 			}
 		} catch (err: any) {

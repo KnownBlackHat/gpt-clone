@@ -25,6 +25,7 @@
 		LayoutList,
 	} from '@lucide/svelte';
 	import ChatMessage from '$lib/components/ChatMessage.svelte';
+	import { copyToClipboard } from '$lib/utils';
 
 	let conversations = $state<Conversation[]>([]);
 	let activeConversationId = $state<string | null>(null);
@@ -374,15 +375,11 @@
 			const { shareId } = await api.conversations.share(id);
 			const shareUrl = `${window.location.origin}/share/${shareId}`;
 			
-			try {
-				if (navigator.clipboard && window.isSecureContext) {
-					await navigator.clipboard.writeText(shareUrl);
-					ui.toast("Share link copied to clipboard!", 'success');
-				} else {
-					throw new Error("Clipboard API unavailable");
-				}
-			} catch (copyErr) {
-				console.warn("Clipboard copy failed, showing link instead:", copyErr);
+			const success = await copyToClipboard(shareUrl);
+			if (success) {
+				ui.toast("Share link copied to clipboard!", 'success');
+			} else {
+				console.warn("Clipboard copy completely failed, showing link instead");
 				await ui.alert(`Copy your share link: ${shareUrl}`, 'Link Copied');
 			}
 		} catch (err: any) {
@@ -397,15 +394,11 @@
 			const { shareId } = await api.conversations.share(id);
 			const joinUrl = `${window.location.origin}/join/${shareId}`;
 			
-			try {
-				if (navigator.clipboard && window.isSecureContext) {
-					await navigator.clipboard.writeText(joinUrl);
-					ui.toast("Group Invite link copied to clipboard!", 'success');
-				} else {
-					throw new Error("Clipboard API unavailable");
-				}
-			} catch (copyErr) {
-				console.warn("Clipboard copy failed, showing link instead:", copyErr);
+			const success = await copyToClipboard(joinUrl);
+			if (success) {
+				ui.toast("Group Invite link copied to clipboard!", 'success');
+			} else {
+				console.warn("Clipboard copy completely failed, showing link instead");
 				await ui.alert(`Copy your invite link: ${joinUrl}`, 'Link Copied');
 			}
 
