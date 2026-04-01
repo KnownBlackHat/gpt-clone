@@ -6,6 +6,7 @@ import cookieParser from 'cookie-parser';
 import authRoutes from './routes/auth.js';
 import conversationRoutes from './routes/conversations.js';
 import messageRoutes from './routes/messages.js';
+import messageActionsRoutes from './routes/message_actions.js';
 import userRoutes from './routes/user.js';
 import quizRoutes from './routes/quiz.js';
 import groupChatRoutes from './routes/groupchat.js';
@@ -24,6 +25,7 @@ app.use(cors({
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ limit: '5mb', extended: true }));
 app.use(cookieParser());
+
 
 // Routes
 // Public Share Route (MUST be before auth-guarded routes)
@@ -51,7 +53,8 @@ app.get('/api/public/share/:shareId', async (req, res) => {
 
 app.use('/api/auth', authRoutes);
 app.use('/api/conversations', conversationRoutes);
-app.use('/api/conversations', messageRoutes);
+app.use('/api/conversations', messageRoutes); // For history (/api/conversations/:id/messages)
+app.use('/api/messages', messageActionsRoutes); // For actions (/api/messages/:id/retry)
 app.use('/api/conversations', groupChatRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/quiz', quizRoutes);

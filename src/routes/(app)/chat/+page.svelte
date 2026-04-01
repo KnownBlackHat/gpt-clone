@@ -21,6 +21,7 @@
 		UserPlus,
 		Archive,
 		ArchiveRestore,
+		LayoutList,
 	} from '@lucide/svelte';
 	import ChatMessage from '$lib/components/ChatMessage.svelte';
 
@@ -311,6 +312,53 @@
 		activeMenuId = null;
 	}
 
+	async function handleEditMessage(messageId: string, newContent: string) {
+		if (!activeConversationId) return;
+		try {
+			isLoading = true;
+			const data = await api.messages.edit(messageId, newContent);
+			const msgIndex = messages.findIndex(m => m.id === messageId);
+			if (msgIndex !== -1) {
+				messages = messages.slice(0, msgIndex + 1);
+				messages[msgIndex].content = newContent;
+			}
+			if (data.needsResend) {
+				inputValue = newContent;
+				messages = messages.slice(0, msgIndex); 
+				await handleSend();
+			}
+		} catch (err: any) {
+			alert(err.message || "Failed to edit message.");
+		} finally {
+			isLoading = false;
+		}
+	}
+
+	async function handleRetryMessage(messageId: string) {
+		if (!activeConversationId) return;
+		try {
+			isLoading = true;
+			const data = await api.messages.retry(messageId);
+			const msgIndex = messages.findIndex(m => m.id === messageId);
+			if (msgIndex !== -1) {
+				messages = messages.slice(0, msgIndex);
+			}
+			if (data.needsResend) {
+				inputValue = data.userMessage.content;
+				messages = messages.filter(m => m.id !== data.userMessage.id);
+				
+				// CRITICAL: Reset isLoading before calling handleSend, 
+				// as handleSend has a guard: if (isLoading) return;
+				isLoading = false; 
+				await handleSend();
+			}
+		} catch (err: any) {
+			alert(err.message || "Failed to retry message.");
+		} finally {
+			isLoading = false;
+		}
+	}
+
 	async function handleSidebarShare(id: string) {
 		try {
 			const { shareId } = await api.conversations.share(id);
@@ -361,6 +409,20 @@
 		}
 		activeMenuId = null;
 	}
+	// Close menu on click outside
+	$effect(() => {
+		if (activeMenuId) {
+			const handleClick = (e: MouseEvent) => {
+				const target = e.target as HTMLElement;
+				// Close if not clicking a menu trigger or inside the menu
+				if (!target.closest('.menu-trigger') && !target.closest('.menu-content')) {
+					activeMenuId = null;
+				}
+			};
+			window.addEventListener('click', handleClick);
+			return () => window.removeEventListener('click', handleClick);
+		}
+	});
 
 	async function handleCreateGroup() {
 		if (!groupTitle.trim()) return;
@@ -458,7 +520,7 @@
 				<p class="text-xs text-niva-text-secondary p-3 text-center">No conversations yet</p>
 			{:else}
 				{#each conversations as conv (conv.id)}
-					<div class="relative group/item {activeMenuId === conv.id ? 'z-50' : 'z-10'} rounded-xl transition-all duration-200
+					<div class="relative group/item {activeMenuId === conv.id ? 'z-[200]' : 'z-10'} rounded-xl transition-all duration-200
 						{activeConversationId === conv.id ? 'bg-niva-accent/10 border border-niva-accent/20' : 'hover:bg-white/5 border border-transparent'}">
 						
 						<!-- Main Selection Button -->
@@ -475,31 +537,23 @@
 						
 						<!-- Three-Dot Toggle -->
 						<button
-							onclick={(e) => { e.stopPropagation(); toggleMenu(e, conv.id); }}
-							class="absolute top-1/2 -translate-y-1/2 right-1 w-9 h-9 flex items-center justify-center rounded-xl transition-all cursor-pointer z-[60] menu-trigger
-								{activeMenuId === conv.id ? 'bg-niva-accent/20 text-niva-accent opacity-100' : 'opacity-0 group-hover/item:opacity-100 text-niva-text-secondary hover:bg-white/10 hover:text-niva-accent'}
-								active:scale-90"
+							onmousedown={(e) => { e.stopPropagation(); e.preventDefault(); toggleMenu(e, conv.id); }}
+							class="absolute top-1/2 -translate-y-1/2 right-1.5 w-10 h-10 flex items-center justify-center rounded-xl transition-all cursor-pointer z-[210] menu-trigger
+								{activeMenuId === conv.id ? 'bg-niva-accent/20 text-niva-accent opacity-100' : 'opacity-40 group-hover/item:opacity-100 text-niva-text-secondary hover:bg-white/10 hover:text-niva-accent'}
+								active:scale-95"
 							title="Chat options"
 						>
-							<MoreVertical size={18} />
+							<MoreVertical size={20} class="pointer-events-none" />
 						</button>
 
 						{#if activeMenuId === conv.id}
-							<!-- Overlay to catch clicks outside the menu -->
-							<!-- svelte-ignore a11y_click_events_have_key_events -->
-							<!-- svelte-ignore a11y_no_static_element_interactions -->
-							<div 
-								onmousedown={(e) => { e.stopPropagation(); activeMenuId = null; }}
-								class="fixed inset-0 z-[70] bg-transparent cursor-default"
-							></div>
-
-							<div class="absolute right-0 bottom-full mb-1 w-52 bg-niva-surface-2 border border-niva-glass-border rounded-2xl shadow-2xl z-[80] p-1.5 animate-in fade-in slide-in-from-bottom-2 duration-200 menu-content">
+							<div class="absolute right-0 top-full mt-1 w-52 bg-niva-surface-2 border border-niva-glass-border rounded-2xl shadow-2xl z-[220] p-1.5 animate-in fade-in slide-in-from-top-2 duration-200 menu-content">
 								<button onclick={() => handleSidebarShare(conv.id)} class="w-full flex items-center gap-2.5 px-3 py-2.5 text-xs text-niva-text hover:bg-white/5 rounded-xl transition-colors cursor-pointer text-left">
-									<Share2 size={15} class="text-niva-text-secondary" />
+									<Share2 size={16} class="text-niva-text-secondary pointer-events-none" />
 									Share View
 								</button>
 								<button onclick={() => handleSidebarGenerateQuiz(conv.id)} class="w-full flex items-center gap-2.5 px-3 py-2.5 text-xs text-niva-accent bg-niva-accent/5 hover:bg-niva-accent/10 rounded-xl transition-colors cursor-pointer text-left font-bold">
-									<LayoutList size={15} />
+									<LayoutList size={16} class="pointer-events-none" />
 									Generate Quiz
 								</button>
 								<button onclick={() => handleInviteLink(conv.id)} class="w-full flex items-center gap-2.5 px-3 py-2.5 text-xs text-niva-text hover:bg-white/5 rounded-xl transition-colors cursor-pointer text-left">
@@ -587,6 +641,9 @@
 					{#each messages as msg}
 						<ChatMessage 
 							message={msg} 
+							onEdit={handleEditMessage}
+							onRetry={handleRetryMessage}
+							onShare={handleSidebarShare}
 							onGenerateQuiz={handleGenerateQuiz}
 						/>
 					{/each}

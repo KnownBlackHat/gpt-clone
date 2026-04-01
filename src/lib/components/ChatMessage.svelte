@@ -226,9 +226,9 @@
 					title="Copy response"
 				>
 					{#if copied}
-						<Check size={14} class="text-green-400" />
+						<Check size={14} class="text-green-400 pointer-events-none" />
 					{:else}
-						<Copy size={14} class="opacity-50 group-hover/btn:opacity-100 transition-opacity" />
+						<Copy size={14} class="opacity-50 group-hover/btn:opacity-100 transition-opacity pointer-events-none" />
 					{/if}
 				</button>
 				<button
@@ -236,14 +236,14 @@
 					class="p-1.5 rounded-lg hover:bg-white/5 text-niva-text-secondary hover:text-niva-accent transition-all duration-200 cursor-pointer flex items-center gap-1.5 group/btn"
 					title="Retry response"
 				>
-					<RotateCcw size={14} class="opacity-50 group-hover/btn:opacity-100 transition-opacity" />
+					<RotateCcw size={14} class="opacity-50 group-hover/btn:opacity-100 transition-opacity pointer-events-none" />
 				</button>
 				<button
 					onclick={() => onShare?.(message.id)}
 					class="p-1.5 rounded-lg hover:bg-white/5 text-niva-text-secondary hover:text-niva-accent transition-all duration-200 cursor-pointer flex items-center gap-1.5 group/btn"
 					title="Share chat"
 				>
-					<Share2 size={14} class="opacity-50 group-hover/btn:opacity-100 transition-opacity" />
+					<Share2 size={14} class="opacity-50 group-hover/btn:opacity-100 transition-opacity pointer-events-none" />
 				</button>
 				
 				{#if onGenerateQuiz}
@@ -252,8 +252,8 @@
 						class="p-1.5 px-2.5 rounded-lg bg-niva-accent/10 border border-niva-accent/20 text-[10px] font-bold text-niva-accent hover:bg-niva-accent/20 transition-all cursor-pointer flex items-center gap-1.5 ml-2"
 						title="Generate Quiz from this context"
 					>
-						<LayoutList size={12} />
-						<span>QUIZZ</span>
+						<LayoutList size={12} class="pointer-events-none" />
+						<span class="pointer-events-none">QUIZZ</span>
 					</button>
 				{/if}
 			</div>

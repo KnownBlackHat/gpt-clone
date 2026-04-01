@@ -16,6 +16,7 @@
 		Edit2,
 		Trash2,
 		Users,
+		LayoutList,
 	} from '@lucide/svelte';
 
 	import ChatMessage from '$lib/components/ChatMessage.svelte';
@@ -291,6 +292,10 @@
 				inputValue = data.userMessage.content;
 				// handleSend will add it back
 				messages = messages.filter(m => m.id !== data.userMessage.id);
+				
+				// CRITICAL: Reset isLoading before calling handleSend, 
+				// as handleSend has a guard: if (isLoading) return;
+				isLoading = false; 
 				await handleSend();
 			}
 		} catch (err: any) {
@@ -365,6 +370,19 @@
 		isMenuOpen = false;
 	}
 
+	// Close menu on click outside
+	$effect(() => {
+		if (isMenuOpen) {
+			const handleClick = (e: MouseEvent) => {
+				const target = e.target as HTMLElement;
+				if (!target.closest('.header-menu-trigger') && !target.closest('.header-menu-content')) {
+					isMenuOpen = false;
+				}
+			};
+			window.addEventListener('click', handleClick);
+			return () => window.removeEventListener('click', handleClick);
+		}
+	});
 
 	function handleKeydown(e: KeyboardEvent) {
 		if (e.key === 'Enter' && !e.shiftKey) {
@@ -401,21 +419,13 @@
 			</button>
 			<div class="relative">
 				<button 
-					onclick={(e) => { e.stopPropagation(); isMenuOpen = !isMenuOpen; }}
+					onclick={() => isMenuOpen = !isMenuOpen}
 					class="p-2 rounded-xl hover:bg-white/5 text-niva-text-secondary transition-colors cursor-pointer header-menu-trigger {isMenuOpen ? 'bg-white/5 text-niva-accent' : ''}"
 				>
 					<MoreVertical size={18} />
 				</button>
 				
 				{#if isMenuOpen}
-					<!-- Overlay to catch clicks outside the header menu -->
-					<!-- svelte-ignore a11y_click_events_have_key_events -->
-					<!-- svelte-ignore a11y_no_static_element_interactions -->
-					<div 
-						onclick={(e) => { e.stopPropagation(); isMenuOpen = false; }}
-						class="fixed inset-0 z-40 bg-transparent cursor-default"
-					></div>
-
 					<div class="absolute right-0 top-12 w-52 bg-niva-surface-2 border border-niva-glass-border rounded-2xl shadow-2xl z-50 p-1.5 animate-in fade-in zoom-in duration-200 header-menu-content">
 						<button onclick={handleShare} class="w-full flex items-center gap-2 px-3 py-2 text-xs text-niva-text hover:bg-white/5 rounded-lg transition-colors cursor-pointer text-left">
 							<Share2 size={14} class="text-niva-text-secondary" />
