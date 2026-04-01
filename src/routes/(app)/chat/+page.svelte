@@ -498,38 +498,29 @@
 		}).join('\n\n').slice(-12000);
 
 		if (context) {
-			sessionStorage.setItem('niva_quiz_context', context);
-			goto('/quiz?from_chat=true');
+			sessionStorage.setItem('niva_assignment_context', context);
+			goto('/assignment?from_chat=true');
 		} else {
-			ui.toast("Not enough conversation context to generate a quiz.", 'error');
+			ui.toast("Not enough conversation context to generate an assignment.", 'error');
 		}
 	}
 
 	async function handleSidebarGenerateQuiz(id: string) {
 		try {
-			activeMenuId = null;
-			// If it's already the active one, we have the messages. 
-			// If not, we might need to fetch them or just notify user to open it first.
-			// To be robust, let's just fetch them if not active.
-			let contextMessages = messages;
-			if (activeConversationId !== id) {
-				const data = await api.messages.list(id);
-				contextMessages = data.messages;
-			}
-
-			const context = contextMessages.map(m => {
+			const res = await api.messages.list(id);
+			const context = res.messages.map((m: any) => {
 				if (m.pdf_text) return `[PDF CONTENT]:\n${m.pdf_text}`;
 				return m.content;
 			}).join('\n\n').slice(-12000);
 
 			if (context) {
-				sessionStorage.setItem('niva_quiz_context', context);
-				goto('/quiz?from_chat=true');
+				sessionStorage.setItem('niva_assignment_context', context);
+				goto('/assignment?from_chat=true');
 			} else {
 				ui.toast("This conversation has no messages yet.", 'info');
 			}
 		} catch (err) {
-			console.error("Failed to generate quiz from sidebar:", err);
+			console.error("Failed to generate assignment from sidebar:", err);
 			ui.toast("Failed to capture conversation context.", 'error');
 		}
 	}
@@ -573,13 +564,12 @@
 						<!-- Main Selection Button -->
 						<button
 							onclick={() => selectConversation(conv)}
-							class="w-full text-left p-3 pr-11 rounded-xl transition-all duration-200 cursor-pointer"
+							class="w-full text-left p-3 pr-11 rounded-lg transition-all duration-200 cursor-pointer"
 						>
-							<p class="text-sm font-medium text-niva-text truncate">
-								{#if conv.is_group}<Users size={11} class="inline-block mr-1 text-niva-accent opacity-70" />{/if}
+							<p class="text-base font-semibold text-niva-text truncate">
+								{#if conv.is_group}<Users size={14} class="inline-block mr-1.5 text-niva-accent opacity-70" />{/if}
 								{conv.title}
 							</p>
-							<p class="text-[11px] text-niva-text-secondary mt-1 truncate">{conv.last_message || 'No messages'}</p>
 						</button>
 						
 						<!-- Three-Dot Toggle -->
@@ -601,8 +591,8 @@
 								</button>
 								{#if (activeConversationId === conv.id ? canGenerateQuiz : (conv.message_count || 0) > 3)}
 									<button onclick={() => handleSidebarGenerateQuiz(conv.id)} class="w-full flex items-center gap-2.5 px-3 py-2.5 text-xs text-niva-accent bg-niva-accent/5 hover:bg-niva-accent/10 rounded-xl transition-colors cursor-pointer text-left font-bold">
-										<LayoutList size={16} class="pointer-events-none" />
-										Generate Quiz
+										<LayoutList size={14} />
+										Generate Assignment
 									</button>
 								{/if}
 								<button onclick={() => handleInviteLink(conv.id)} class="w-full flex items-center gap-2.5 px-3 py-2.5 text-xs text-niva-text hover:bg-white/5 rounded-xl transition-colors cursor-pointer text-left">

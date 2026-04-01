@@ -324,8 +324,8 @@
 			return m.content;
 		}).join('\n\n').slice(-12000); // Larger window for deep PDF analysis
 
-		sessionStorage.setItem('niva_quiz_context', context);
-		goto('/quiz?from_chat=true');
+		sessionStorage.setItem('niva_assignment_context', context);
+		goto('/assignment?from_chat=true');
 	}
 
 	async function handleShare() {
@@ -485,7 +485,7 @@
 						{#if canGenerateQuiz}
 							<button onclick={handleGenerateQuiz} class="w-full flex items-center gap-2 px-3 py-2 text-xs text-niva-accent hover:bg-niva-accent/10 rounded-lg transition-colors cursor-pointer text-left font-bold">
 								<LayoutList size={14} />
-								Generate Quiz
+								Generate Assignment
 							</button>
 						{/if}
 						<button onclick={handleRename} class="w-full flex items-center gap-2 px-3 py-2 text-xs text-niva-text hover:bg-white/5 rounded-lg transition-colors cursor-pointer text-left">

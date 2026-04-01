@@ -20,7 +20,7 @@
 	const navItems = [
 		{ icon: MessageCircle, label: 'Recent', href: '/chat' },
 		{ icon: FolderOpen, label: 'Projects', href: '/projects' },
-		{ icon: LayoutList, label: 'Quiz', href: '/quiz' },
+		{ icon: LayoutList, label: 'Assignment', href: '/assignment' },
 		{ icon: Settings, label: 'Settings', href: '/settings' },
 	];
 

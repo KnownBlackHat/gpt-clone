@@ -46,7 +46,7 @@
 	let showSolutions = $state(false);
 
 	$effect(() => {
-		const storedContext = sessionStorage.getItem('niva_quiz_context');
+		const storedContext = sessionStorage.getItem('niva_assignment_context');
 		if (storedContext) {
 			quizContext = storedContext;
 			isContextBased = true;
@@ -55,7 +55,7 @@
 	});
 
 	function clearContext() {
-		sessionStorage.removeItem('niva_quiz_context');
+		sessionStorage.removeItem('niva_assignment_context');
 		quizContext = null;
 		isContextBased = false;
 		topic = '';
@@ -329,14 +329,14 @@
 </script>
 
 <svelte:head>
-	<title>AI Quiz Generator | Niva AI</title>
+	<title>AI Assignment Generator | Niva AI</title>
 </svelte:head>
 
 <div class="flex flex-col h-full bg-niva-bg text-niva-text overflow-hidden font-[Manrope]">
 	<header class="h-14 glass-panel-strong flex items-center justify-between px-6 shrink-0 border-b border-niva-glass-border z-10">
 		<div class="flex items-center gap-3">
 			<Brain size={18} class="text-niva-accent" />
-			<h1 class="text-sm font-semibold tracking-tight">AI Quiz Generator</h1>
+			<h1 class="text-sm font-semibold tracking-tight">AI Assignment Generator</h1>
 		</div>
 		<div class="flex items-center gap-3">
 			{#if quizState === 'quiz'}
@@ -392,7 +392,7 @@
 						<div class="w-16 h-16 rounded-2xl niva-gradient flex items-center justify-center mx-auto mb-6 niva-glow">
 							<Sparkles size={32} class="text-niva-accent" />
 						</div>
-						<h2 class="text-2xl md:text-3xl font-bold text-niva-text tracking-tight">Generate a Custom Quiz</h2>
+						<h2 class="text-2xl md:text-3xl font-bold text-niva-text tracking-tight">Generate a Custom Assignment</h2>
 						<p class="text-niva-text-secondary text-sm">Challenge yourself or others with AI-powered questions on any subject.</p>
 					</div>
 
@@ -400,7 +400,7 @@
 						<!-- Quiz Source Selection -->
 						<div class="space-y-4">
 							<div class="flex items-center justify-between px-1">
-								<label class="text-[11px] font-bold text-niva-text-secondary uppercase tracking-[0.2em] ml-1">Quiz Source</label>
+								<label class="text-[11px] font-bold text-niva-text-secondary uppercase tracking-[0.2em] ml-1">Assignment Source</label>
 								{#if isContextBased}
 									<button 
 										onclick={clearContext}
@@ -586,7 +586,7 @@
 							class="w-full h-14 rounded-2xl bg-niva-accent text-niva-bg font-bold text-sm flex items-center justify-center gap-2 hover:opacity-90 hover:scale-[1.02] transition-all disabled:opacity-50 disabled:scale-100 niva-glow-sm mt-4 cursor-pointer"
 						>
 							<Brain size={18} />
-							Generate Quiz
+							Generate Assignment
 						</button>
 					</div>
 
@@ -594,7 +594,7 @@
 					{#if showHistory && quizHistory.length > 0}
 						<div in:fly={{ y: 10, duration: 300 }} class="border-t border-white/10 pt-6 mt-2 space-y-3">
 							<div class="flex items-center justify-between">
-								<h3 class="text-xs font-bold text-niva-text-secondary uppercase tracking-widest">Recent Quizzes</h3>
+								<h3 class="text-xs font-bold text-niva-text-secondary uppercase tracking-widest">Recent Assignments</h3>
 								<button onclick={() => { quizHistory = []; }} class="text-[10px] text-niva-error/70 hover:text-niva-error cursor-pointer font-medium">Clear</button>
 							</div>
 							<div class="space-y-2 max-h-72 md:max-h-96 overflow-y-auto niva-scrollbar">
@@ -752,7 +752,7 @@
 								onclick={nextQuestion}
 								class="w-full h-14 rounded-2xl bg-white text-niva-bg font-bold text-sm flex items-center justify-center gap-2 hover:opacity-90 transition-all hover:scale-[1.01] cursor-pointer"
 							>
-								{currentIndex < questions.length - 1 ? 'Next Question' : 'Finish Quiz'}
+								{currentIndex < questions.length - 1 ? 'Next Question' : 'Finish Assignment'}
 								<ChevronRight size={18} />
 							</button>
 						</div>
@@ -772,7 +772,7 @@
 								{grade}
 							</div>
 						</div>
-						<h2 class="text-3xl font-bold tracking-tight">Quiz Complete!</h2>
+						<h2 class="text-3xl font-bold tracking-tight">Assignment Complete!</h2>
 						<p class="text-niva-text-secondary text-sm">
 							{getMotivation(pct)}
 						</p>
@@ -864,7 +864,7 @@
 							class="w-full h-14 rounded-2xl bg-niva-accent text-niva-bg font-bold text-sm flex items-center justify-center gap-2 hover:opacity-90 transition-all hover:scale-[1.01] niva-glow-sm cursor-pointer"
 						>
 							<RotateCcw size={18} />
-							Retake Quiz
+							Retake Assignment
 						</button>
 						<button 
 							onclick={restart}
