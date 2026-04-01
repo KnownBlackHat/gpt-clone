@@ -363,9 +363,17 @@
 	}
 	// Close menu on click outside
 	$effect(() => {
-		const handleClick = () => activeMenuId = null;
-		window.addEventListener('click', handleClick);
-		return () => window.removeEventListener('click', handleClick);
+		if (activeMenuId) {
+			const handleClick = (e: MouseEvent) => {
+				const target = e.target as HTMLElement;
+				// Close if not clicking a menu trigger or inside the menu
+				if (!target.closest('.menu-trigger') && !target.closest('.menu-content')) {
+					activeMenuId = null;
+				}
+			};
+			window.addEventListener('click', handleClick);
+			return () => window.removeEventListener('click', handleClick);
+		}
 	});
 
 	async function handleCreateGroup() {
@@ -432,9 +440,9 @@
 	}
 </script>
 
-<div class="flex h-full">
-	<!-- Conversation List Sidebar (desktop) -->
-	<aside class="hidden lg:flex flex-col w-72 border-r border-niva-glass-border bg-niva-surface-1/50 shrink-0">
+<div class="flex h-full relative">
+	<!-- Conversation List Sidebar (desktop/tablet) -->
+	<aside class="hidden md:flex flex-col w-72 border-r border-niva-glass-border bg-niva-surface-1/50 shrink-0 relative z-40">
 		<div class="p-4 border-b border-niva-glass-border">
 			<div class="flex items-center justify-between">
 				<h2 class="text-sm font-semibold text-niva-text font-[Manrope]">
@@ -463,7 +471,7 @@
 			{#if conversations.length === 0}
 				<p class="text-xs text-niva-text-secondary p-3 text-center">No conversations yet</p>
 			{:else}
-				{#each conversations as conv}
+				{#each conversations as conv (conv.id)}
 					<div class="relative group/item {activeMenuId === conv.id ? 'z-50' : 'z-10'}">
 						<button
 							onclick={() => selectConversation(conv)}
@@ -481,23 +489,24 @@
 						
 						<button
 							onclick={(e) => toggleMenu(e, conv.id)}
-							class="absolute top-3.5 right-2 px-1.5 py-1.5 rounded-lg hover:bg-white/10 text-niva-text-secondary transition-all cursor-pointer z-30
-								{activeMenuId === conv.id ? 'opacity-100 bg-white/10' : 'opacity-0 group-hover/item:opacity-100'}"
+							class="absolute top-2.5 right-2 w-9 h-9 flex items-center justify-center rounded-xl hover:bg-white/10 text-niva-text-secondary transition-all cursor-pointer z-40 menu-trigger
+								{activeMenuId === conv.id ? 'opacity-100 bg-white/10 text-niva-accent scale-100' : 'opacity-0 group-hover/item:opacity-100 scale-90 hover:scale-100'}"
+							title="Chat options"
 						>
-							<MoreVertical size={14} />
+							<MoreVertical size={16} />
 						</button>
 
 						{#if activeMenuId === conv.id}
-							<div class="absolute right-2 top-10 w-48 bg-niva-surface-2 border border-niva-glass-border rounded-xl shadow-2xl z-50 p-1 animate-in fade-in zoom-in duration-200">
-								<button onclick={() => handleSidebarShare(conv.id)} class="w-full flex items-center gap-2 px-3 py-2 text-xs text-niva-text hover:bg-white/5 rounded-lg transition-colors cursor-pointer text-left">
-									<Share2 size={14} class="text-niva-text-secondary" />
+							<div class="absolute right-2 top-12 w-52 bg-niva-surface-2 border border-niva-glass-border rounded-2xl shadow-2xl z-[100] p-1.5 animate-in fade-in zoom-in duration-200 menu-content">
+								<button onclick={() => handleSidebarShare(conv.id)} class="w-full flex items-center gap-2.5 px-3 py-2.5 text-xs text-niva-text hover:bg-white/5 rounded-xl transition-colors cursor-pointer text-left">
+									<Share2 size={15} class="text-niva-text-secondary" />
 									Share View
 								</button>
-								<button onclick={() => handleSidebarGenerateQuiz(conv.id)} class="w-full flex items-center gap-2 px-3 py-2 text-xs text-niva-accent hover:bg-niva-accent/10 rounded-lg transition-colors cursor-pointer text-left font-bold">
-									<LayoutList size={14} />
+								<button onclick={() => handleSidebarGenerateQuiz(conv.id)} class="w-full flex items-center gap-2.5 px-3 py-2.5 text-xs text-niva-accent bg-niva-accent/5 hover:bg-niva-accent/10 rounded-xl transition-colors cursor-pointer text-left font-bold">
+									<LayoutList size={15} />
 									Generate Quiz
 								</button>
-								<button onclick={() => handleInviteLink(conv.id)} class="w-full flex items-center gap-2 px-3 py-2 text-xs text-niva-text hover:bg-white/5 rounded-lg transition-colors cursor-pointer text-left">
+								<button onclick={() => handleInviteLink(conv.id)} class="w-full flex items-center gap-2.5 px-3 py-2.5 text-xs text-niva-text hover:bg-white/5 rounded-xl transition-colors cursor-pointer text-left">
 									<UserPlus size={14} class="text-niva-text-secondary" />
 									Invite by Link
 								</button>

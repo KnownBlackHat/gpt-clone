@@ -367,8 +367,13 @@
 
 	// Close menu on click outside
 	$effect(() => {
-		const handleClick = () => isMenuOpen = false;
 		if (isMenuOpen) {
+			const handleClick = (e: MouseEvent) => {
+				const target = e.target as HTMLElement;
+				if (!target.closest('.header-menu-trigger') && !target.closest('.header-menu-content')) {
+					isMenuOpen = false;
+				}
+			};
 			window.addEventListener('click', handleClick);
 			return () => window.removeEventListener('click', handleClick);
 		}
@@ -409,14 +414,14 @@
 			</button>
 			<div class="relative">
 				<button 
-					onclick={(e) => { e.stopPropagation(); isMenuOpen = !isMenuOpen; }}
-					class="p-1.5 rounded-lg hover:bg-white/5 text-niva-text-secondary transition-colors cursor-pointer"
+					onclick={() => isMenuOpen = !isMenuOpen}
+					class="p-2 rounded-xl hover:bg-white/5 text-niva-text-secondary transition-colors cursor-pointer header-menu-trigger {isMenuOpen ? 'bg-white/5 text-niva-accent' : ''}"
 				>
 					<MoreVertical size={18} />
 				</button>
 				
 				{#if isMenuOpen}
-					<div class="absolute right-0 top-10 w-48 bg-niva-surface-2 border border-niva-glass-border rounded-xl shadow-2xl p-1 animate-in fade-in zoom-in duration-200">
+					<div class="absolute right-0 top-12 w-52 bg-niva-surface-2 border border-niva-glass-border rounded-2xl shadow-2xl z-50 p-1.5 animate-in fade-in zoom-in duration-200 header-menu-content">
 						<button onclick={handleShare} class="w-full flex items-center gap-2 px-3 py-2 text-xs text-niva-text hover:bg-white/5 rounded-lg transition-colors cursor-pointer text-left">
 							<Share2 size={14} class="text-niva-text-secondary" />
 							Share Chat
