@@ -41,8 +41,11 @@
 	>
 		<!-- Backdrop -->
 		<div 
-			class="absolute inset-0 bg-niva-bg/80 backdrop-blur-md"
+			class="absolute inset-0 bg-niva-bg/80 backdrop-blur-md cursor-pointer"
 			onclick={() => ui.close(false)}
+			onkeydown={(e) => e.key === 'Escape' && ui.close(false)}
+			role="button"
+			tabindex="-1"
 		></div>
 
 		<!-- Dialog -->
@@ -62,6 +65,7 @@
 
 				{#if $ui.type === 'prompt'}
 					<div class="w-full pt-4" in:fly={{ y: 10, duration: 300 }}>
+						<!-- svelte-ignore a11y_autofocus -->
 						<input 
 							type="text" 
 							bind:value={$ui.promptValue}

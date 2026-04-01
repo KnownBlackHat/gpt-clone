@@ -34,7 +34,7 @@
 	let quizContext: string | null = $state(null);
 	let selectedPdf: string | null = $state(null);
 	let pdfName: string | null = $state(null);
-	let pdfInput: HTMLInputElement;
+	let pdfInput: HTMLInputElement | undefined = $state();
 
 	// Advanced Features
 	let showAdvanced = $state(false);
@@ -42,7 +42,7 @@
 	let marksPerQuestion = $state(1);
 	let pyqData: string | null = $state(null);
 	let pyqName: string | null = $state(null);
-	let pyqInput: HTMLInputElement;
+	let pyqInput: HTMLInputElement | undefined = $state();
 	let showSolutions = $state(false);
 
 	$effect(() => {
@@ -400,6 +400,7 @@
 						<!-- Quiz Source Selection -->
 						<div class="space-y-4">
 							<div class="flex items-center justify-between px-1">
+								<!-- svelte-ignore a11y_label_has_associated_control -->
 								<label class="text-[11px] font-bold text-niva-text-secondary uppercase tracking-[0.2em] ml-1">Assignment Source</label>
 								{#if isContextBased}
 									<button 
@@ -437,7 +438,7 @@
 									</div>
 								{:else if !quizContext}
 									<button 
-										onclick={() => pdfInput.click()}
+										onclick={() => pdfInput?.click()}
 										class="w-full p-4 rounded-2xl border-2 border-dashed border-white/10 hover:border-niva-accent/40 hover:bg-white/5 transition-all flex flex-col items-center justify-center gap-2 group/upload cursor-pointer"
 									>
 										<div class="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-niva-text-secondary group-hover/upload:text-niva-accent transition-colors">
@@ -523,6 +524,7 @@
 
 									<!-- PYQ Upload -->
 									<div class="space-y-2">
+										<!-- svelte-ignore a11y_label_has_associated_control -->
 										<label class="text-[10px] font-bold text-niva-text-secondary uppercase tracking-widest ml-1">Style Reference (PYQ Upload)</label>
 										<input 
 											type="file" 
@@ -544,7 +546,7 @@
 											</div>
 										{:else}
 											<button 
-												onclick={() => pyqInput.click()}
+												onclick={() => pyqInput?.click()}
 												class="w-full p-4 rounded-xl border border-dashed border-white/20 hover:border-niva-accent/40 hover:bg-white/5 transition-all flex flex-col items-center justify-center gap-1.5 text-niva-text-secondary hover:text-niva-text cursor-pointer"
 											>
 												<FileText size={16} />
