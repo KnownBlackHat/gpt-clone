@@ -472,32 +472,34 @@
 				<p class="text-xs text-niva-text-secondary p-3 text-center">No conversations yet</p>
 			{:else}
 				{#each conversations as conv (conv.id)}
-					<div class="relative group/item {activeMenuId === conv.id ? 'z-50' : 'z-10'}">
+					<div class="relative group/item {activeMenuId === conv.id ? 'z-50' : 'z-10'} rounded-xl transition-all duration-200
+						{activeConversationId === conv.id ? 'bg-niva-accent/10 border border-niva-accent/20' : 'hover:bg-white/5 border border-transparent'}">
+						
+						<!-- Main Selection Button -->
 						<button
 							onclick={() => selectConversation(conv)}
-							class="w-full text-left p-3 rounded-xl transition-all duration-200 cursor-pointer group
-								{activeConversationId === conv.id
-									? 'bg-niva-accent/10 border border-niva-accent/20'
-									: 'hover:bg-white/5 border border-transparent'}"
+							class="w-full text-left p-3 pr-11 rounded-xl transition-all duration-200 cursor-pointer"
 						>
-							<p class="text-sm font-medium text-niva-text truncate pr-6">
+							<p class="text-sm font-medium text-niva-text truncate">
 								{#if conv.is_group}<Users size={11} class="inline-block mr-1 text-niva-accent opacity-70" />{/if}
 								{conv.title}
 							</p>
 							<p class="text-[11px] text-niva-text-secondary mt-1 truncate">{conv.last_message || 'No messages'}</p>
 						</button>
 						
+						<!-- Three-Dot Toggle -->
 						<button
 							onclick={(e) => toggleMenu(e, conv.id)}
-							class="absolute top-2.5 right-2 w-9 h-9 flex items-center justify-center rounded-xl hover:bg-white/10 text-niva-text-secondary transition-all cursor-pointer z-40 menu-trigger
-								{activeMenuId === conv.id ? 'opacity-100 bg-white/10 text-niva-accent scale-100' : 'opacity-0 group-hover/item:opacity-100 scale-90 hover:scale-100'}"
+							class="absolute top-1/2 -translate-y-1/2 right-1 w-9 h-9 flex items-center justify-center rounded-xl transition-all cursor-pointer z-40 menu-trigger
+								{activeMenuId === conv.id ? 'opacity-100 bg-white/10 text-niva-accent' : 'opacity-0 group-hover/item:opacity-100 text-niva-text-secondary hover:bg-white/10 hover:text-niva-accent'}
+								active:scale-90 active:bg-white/20"
 							title="Chat options"
 						>
-							<MoreVertical size={16} />
+							<MoreVertical size={18} />
 						</button>
 
 						{#if activeMenuId === conv.id}
-							<div class="absolute right-2 top-12 w-52 bg-niva-surface-2 border border-niva-glass-border rounded-2xl shadow-2xl z-[100] p-1.5 animate-in fade-in zoom-in duration-200 menu-content">
+							<div class="absolute right-0 top-full mt-1 w-52 bg-niva-surface-2 border border-niva-glass-border rounded-2xl shadow-2xl z-[100] p-1.5 animate-in fade-in zoom-in duration-200 menu-content">
 								<button onclick={() => handleSidebarShare(conv.id)} class="w-full flex items-center gap-2.5 px-3 py-2.5 text-xs text-niva-text hover:bg-white/5 rounded-xl transition-colors cursor-pointer text-left">
 									<Share2 size={15} class="text-niva-text-secondary" />
 									Share View
