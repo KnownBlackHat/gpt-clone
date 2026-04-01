@@ -361,20 +361,6 @@
 		}
 		activeMenuId = null;
 	}
-	// Close menu on click outside
-	$effect(() => {
-		if (activeMenuId) {
-			const handleClick = (e: MouseEvent) => {
-				const target = e.target as HTMLElement;
-				// Close if not clicking a menu trigger or inside the menu
-				if (!target.closest('.menu-trigger') && !target.closest('.menu-content')) {
-					activeMenuId = null;
-				}
-			};
-			window.addEventListener('click', handleClick);
-			return () => window.removeEventListener('click', handleClick);
-		}
-	});
 
 	async function handleCreateGroup() {
 		if (!groupTitle.trim()) return;
@@ -489,17 +475,25 @@
 						
 						<!-- Three-Dot Toggle -->
 						<button
-							onclick={(e) => toggleMenu(e, conv.id)}
-							class="absolute top-1/2 -translate-y-1/2 right-1 w-9 h-9 flex items-center justify-center rounded-xl transition-all cursor-pointer z-40 menu-trigger
-								{activeMenuId === conv.id ? 'opacity-100 bg-white/10 text-niva-accent' : 'opacity-0 group-hover/item:opacity-100 text-niva-text-secondary hover:bg-white/10 hover:text-niva-accent'}
-								active:scale-90 active:bg-white/20"
+							onclick={(e) => { e.stopPropagation(); toggleMenu(e, conv.id); }}
+							class="absolute top-1/2 -translate-y-1/2 right-1 w-9 h-9 flex items-center justify-center rounded-xl transition-all cursor-pointer z-[60] menu-trigger
+								{activeMenuId === conv.id ? 'bg-niva-accent/20 text-niva-accent opacity-100' : 'opacity-0 group-hover/item:opacity-100 text-niva-text-secondary hover:bg-white/10 hover:text-niva-accent'}
+								active:scale-90"
 							title="Chat options"
 						>
 							<MoreVertical size={18} />
 						</button>
 
 						{#if activeMenuId === conv.id}
-							<div class="absolute right-0 top-full mt-1 w-52 bg-niva-surface-2 border border-niva-glass-border rounded-2xl shadow-2xl z-[100] p-1.5 animate-in fade-in zoom-in duration-200 menu-content">
+							<!-- Overlay to catch clicks outside the menu -->
+							<!-- svelte-ignore a11y_click_events_have_key_events -->
+							<!-- svelte-ignore a11y_no_static_element_interactions -->
+							<div 
+								onmousedown={(e) => { e.stopPropagation(); activeMenuId = null; }}
+								class="fixed inset-0 z-[70] bg-transparent cursor-default"
+							></div>
+
+							<div class="absolute right-0 bottom-full mb-1 w-52 bg-niva-surface-2 border border-niva-glass-border rounded-2xl shadow-2xl z-[80] p-1.5 animate-in fade-in slide-in-from-bottom-2 duration-200 menu-content">
 								<button onclick={() => handleSidebarShare(conv.id)} class="w-full flex items-center gap-2.5 px-3 py-2.5 text-xs text-niva-text hover:bg-white/5 rounded-xl transition-colors cursor-pointer text-left">
 									<Share2 size={15} class="text-niva-text-secondary" />
 									Share View
