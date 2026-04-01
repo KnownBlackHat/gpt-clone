@@ -3,16 +3,17 @@
 	import { markedHighlight } from 'marked-highlight';
 	import hljs from 'highlight.js';
 	import DOMPurify from 'dompurify';
-	import { Sparkles, User as UserIcon, Copy, Check, Edit2, RotateCcw, X, Send, Share2 } from '@lucide/svelte';
+	import { Sparkles, User as UserIcon, Copy, Check, Edit2, RotateCcw, X, Send, Share2, LayoutList } from '@lucide/svelte';
 
 	// Import highlight.js theme
 	import 'highlight.js/styles/atom-one-dark.css';
 
-	let { message, onEdit, onRetry, onShare } = $props<{ 
+	let { message, onEdit, onRetry, onShare, onGenerateQuiz } = $props<{ 
 		message: any, 
 		onEdit?: (id: string, newContent: string) => void,
 		onRetry?: (id: string) => void,
-		onShare?: (id: string) => void
+		onShare?: (id: string) => void,
+		onGenerateQuiz?: (id: string) => void
 	}>();
 	let isAssistant = $derived(message.role === 'assistant');
 	let copied = $state(false);
@@ -253,6 +254,17 @@
 				>
 					<Share2 size={14} class="opacity-50 group-hover/btn:opacity-100 transition-opacity" />
 				</button>
+				
+				{#if onGenerateQuiz}
+					<button
+						onclick={() => onGenerateQuiz(message.id)}
+						class="p-1.5 px-2.5 rounded-lg bg-niva-accent/10 border border-niva-accent/20 text-[10px] font-bold text-niva-accent hover:bg-niva-accent/20 transition-all cursor-pointer flex items-center gap-1.5 ml-2"
+						title="Generate Quiz from this context"
+					>
+						<LayoutList size={12} />
+						<span>QUIZZ</span>
+					</button>
+				{/if}
 			</div>
 		{/if}
 

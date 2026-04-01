@@ -298,6 +298,13 @@
 		}
 	}
 
+	function handleGenerateQuiz() {
+		// Capture context from messages (last few for context)
+		const context = messages.map(m => m.content).join('\n\n').slice(-4000);
+		sessionStorage.setItem('niva_quiz_context', context);
+		goto('/quiz?from_chat=true');
+	}
+
 	async function handleShare() {
 		if (!conversationId) return;
 		try {
@@ -431,6 +438,7 @@
 					onEdit={handleEdit}
 					onRetry={handleRetry}
 					onShare={handleShare}
+					onGenerateQuiz={handleGenerateQuiz}
 				/>
 			{/each}
 

@@ -26,6 +26,24 @@
 	let topic = $state('');
 	let questionCount = $state(5);
 	let difficulty = $state<Difficulty>('medium');
+	let isContextBased = $state(false);
+	let quizContext = $state<string | null>(null);
+
+	$effect(() => {
+		const storedContext = sessionStorage.getItem('niva_quiz_context');
+		if (storedContext) {
+			quizContext = storedContext;
+			isContextBased = true;
+			topic = 'Assignment Context';
+		}
+	});
+
+	function clearContext() {
+		sessionStorage.removeItem('niva_quiz_context');
+		quizContext = null;
+		isContextBased = false;
+		topic = '';
+	}
 
 	// Quiz runtime
 	let quizTitle = $state('');
@@ -127,8 +145,9 @@
 		try {
 			state = 'generating';
 			error = null;
-			const data = await api.quiz.generate(topic, questionCount, difficulty);
-			quizTitle = data.title;
+			// If context-based, we prioritize the context over the topic string
+			const data = await api.quiz.generate(isContextBased ? (quizContext || topic) : topic, questionCount, difficulty);
+			quizTitle = isContextBased ? "Assignment Review" : data.title;
 			questions = data.questions;
 			currentIndex = 0;
 			score = 0;

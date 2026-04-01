@@ -10,7 +10,6 @@
 		LogOut,
 		Sparkles,
 		LayoutList,
-		Calculator,
 	} from '@lucide/svelte';
 
 	let { children } = $props();
@@ -19,7 +18,6 @@
 	const navItems = [
 		{ icon: MessageCircle, label: 'Recent', href: '/chat' },
 		{ icon: LayoutList, label: 'Quiz', href: '/quiz' },
-		{ icon: Calculator, label: 'Calculator', href: '/calculator' },
 		{ icon: Settings, label: 'Settings', href: '/settings' },
 	];
 

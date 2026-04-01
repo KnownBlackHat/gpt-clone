@@ -19,6 +19,8 @@
 		Trash2,
 		Users,
 		UserPlus,
+		Archive,
+		ArchiveRestore,
 	} from '@lucide/svelte';
 	import ChatMessage from '$lib/components/ChatMessage.svelte';
 
@@ -33,6 +35,7 @@
 	let messagesContainer: HTMLElement;
 	let textareaElement = $state<HTMLTextAreaElement | null>(null);
 	let activeMenuId = $state<string | null>(null);
+	let isArchiveView = $state(false);
 
 	// Group creation
 	let showGroupDialog = $state(false);
@@ -65,12 +68,26 @@
 
 	async function loadConversations() {
 		try {
-			const data = await api.conversations.list();
+			const data = await api.conversations.list(isArchiveView);
 			conversations = data.conversations;
 		} catch {
 			// ignore
 		}
 	}
+
+	async function handleArchive(id: string) {
+		try {
+			await api.conversations.archive(id);
+			activeMenuId = null;
+			await loadConversations();
+		} catch (err: any) {
+			console.error('Archive error:', err);
+		}
+	}
+
+	$effect(() => {
+		loadConversations();
+	});
 
 	async function loadMessages(convId: string) {
 		try {
@@ -351,14 +368,26 @@
 	<aside class="hidden lg:flex flex-col w-72 border-r border-niva-glass-border bg-niva-surface-1/50 shrink-0">
 		<div class="p-4 border-b border-niva-glass-border">
 			<div class="flex items-center justify-between">
-				<h2 class="text-sm font-semibold text-niva-text font-[Manrope]">Conversations</h2>
-				<button
-					onclick={() => showGroupDialog = true}
-					class="p-1.5 rounded-lg hover:bg-white/5 text-niva-text-secondary hover:text-niva-accent transition-colors cursor-pointer"
-					title="New Group Chat"
-				>
-					<Users size={14} />
-				</button>
+				<h2 class="text-sm font-semibold text-niva-text font-[Manrope]">
+					{isArchiveView ? 'Archived' : 'Conversations'}
+				</h2>
+				<div class="flex items-center gap-1">
+					<button
+						onclick={() => isArchiveView = !isArchiveView}
+						class="p-1.5 rounded-lg hover:bg-white/5 {isArchiveView ? 'text-niva-accent' : 'text-niva-text-secondary'} transition-colors cursor-pointer"
+						title={isArchiveView ? 'Show Active' : 'Show Archived'}
+					>
+						<Archive size={14} />
+					</button>
+					<button
+						onclick={() => showGroupDialog = true}
+						class="p-1.5 px-2.5 rounded-lg bg-niva-accent/10 border border-niva-accent/20 text-[10px] font-bold text-niva-accent hover:bg-niva-accent/20 transition-all cursor-pointer flex items-center gap-1"
+						title="New Group Chat"
+					>
+						<Users size={12} />
+						<span>+ GROUP</span>
+					</button>
+				</div>
 			</div>
 		</div>
 		<div class="flex-1 overflow-y-auto niva-scrollbar p-2 space-y-1">
@@ -374,10 +403,10 @@
 									? 'bg-niva-accent/10 border border-niva-accent/20'
 									: 'hover:bg-white/5 border border-transparent'}"
 						>
-						<p class="text-sm font-medium text-niva-text truncate pr-6">
-							{#if conv.is_group}<Users size={11} class="inline-block mr-1 text-niva-accent opacity-70" />{/if}
-							{conv.title}
-						</p>
+							<p class="text-sm font-medium text-niva-text truncate pr-6">
+								{#if conv.is_group}<Users size={11} class="inline-block mr-1 text-niva-accent opacity-70" />{/if}
+								{conv.title}
+							</p>
 							<p class="text-[11px] text-niva-text-secondary mt-1 truncate">{conv.last_message || 'No messages'}</p>
 						</button>
 						
@@ -397,6 +426,15 @@
 								<button onclick={() => handleRename(conv.id)} class="w-full flex items-center gap-2 px-3 py-2 text-xs text-niva-text hover:bg-white/5 rounded-lg transition-colors cursor-pointer text-left">
 									<Edit2 size={14} class="text-niva-text-secondary" />
 									Rename Chat
+								</button>
+								<button onclick={() => handleArchive(conv.id)} class="w-full flex items-center gap-2 px-3 py-2 text-xs text-niva-text hover:bg-white/5 rounded-lg transition-colors cursor-pointer text-left">
+									{#if conv.is_archived}
+										<ArchiveRestore size={14} class="text-niva-text-secondary" />
+										Unarchive Chat
+									{:else}
+										<Archive size={14} class="text-niva-text-secondary" />
+										Archive Chat
+									{/if}
 								</button>
 								<div class="h-px bg-niva-glass-border my-1"></div>
 								<button onclick={() => handleDeleteConversation(conv.id)} class="w-full flex items-center gap-2 px-3 py-2 text-xs text-niva-error hover:bg-niva-error-bg/30 rounded-lg transition-colors cursor-pointer text-left">

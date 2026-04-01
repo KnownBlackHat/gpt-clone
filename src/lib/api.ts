@@ -63,7 +63,7 @@ export const api = {
         /**
          * List all chats for the current user.
          */
-        list: () => request<{ conversations: Conversation[] }>('/conversations'),
+        list: (archived: boolean = false) => request<{ conversations: Conversation[] }>(`/conversations?archived=${archived}`),
 
         /**
          * Start a new chat session.
@@ -80,6 +80,11 @@ export const api = {
          * Delete an entire conversation thread.
          */
         delete: (id: string) => request(`/conversations/${id}`, { method: 'DELETE' }),
+
+        /**
+         * Archive a conversation.
+         */
+        archive: (id: string) => request<{ is_archived: boolean }>(`/conversations/${id}/archive`, { method: 'POST' }),
 
         /**
          * Generate a public share link for a conversation.

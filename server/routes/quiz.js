@@ -22,6 +22,8 @@ router.post('/generate', async (req, res) => {
             return res.status(400).json({ error: 'Topic is required' });
         }
 
+        const isContext = topic.length > 200 || topic.split('\n').length > 5;
+
         const difficultyGuide = {
             easy: 'Generate straightforward questions suitable for beginners. Focus on fundamental concepts and basic recall.',
             medium: 'Generate moderately challenging questions that require good understanding of the subject. Include some application-based questions.',
@@ -29,7 +31,8 @@ router.post('/generate', async (req, res) => {
         };
 
         const systemPrompt = `
-You are a professional quiz generator. Your task is to generate a high-quality multiple choice quiz based on the user's topic.
+You are a professional quiz generator. Your task is to generate a high-quality multiple choice quiz.
+${isContext ? 'CRITICAL: The user has provided CONTEXT (chat history or assignment text). Generate questions ONLY based on this context.' : `Theme: ${topic}`}
 Difficulty level: ${(difficulty || 'medium').toUpperCase()}
 ${difficultyGuide[difficulty] || difficultyGuide.medium}
 
@@ -45,15 +48,15 @@ You must return ONLY a JSON object with the following structure:
     }
   ]
 }
-Ensure there are exactly ${amount} questions. Each question must have exactly 4 options.
-The JSON must be valid and contain no other text before or after it.
-`;
+Ensure there are exactly ${amount} questions.`;
+
+        const userPrompt = isContext ? `CONTEXT:\n${topic}` : `Generate a ${difficulty} difficulty quiz about: ${topic}`;
 
         const response = await groq.chat.completions.create({
             model: DEFAULT_MODEL,
             messages: [
                 { role: 'system', content: systemPrompt },
-                { role: 'user', content: `Generate a ${difficulty} difficulty quiz about: ${topic}` }
+                { role: 'user', content: userPrompt }
             ],
             response_format: { type: 'json_object' }
         });

@@ -71,6 +71,7 @@ async function runMigrations() {
         await pool.query(`
             ALTER TABLE conversations ADD COLUMN IF NOT EXISTS share_id UUID DEFAULT NULL;
             ALTER TABLE conversations ADD COLUMN IF NOT EXISTS is_group BOOLEAN DEFAULT FALSE;
+            ALTER TABLE conversations ADD COLUMN IF NOT EXISTS is_archived BOOLEAN DEFAULT FALSE;
         `);
 
         // Create conversation_members table

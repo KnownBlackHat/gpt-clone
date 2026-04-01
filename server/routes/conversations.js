@@ -8,19 +8,40 @@ router.use(authMiddleware);
 // GET /api/conversations
 router.get('/', async (req, res) => {
     try {
+        const archived = req.query.archived === 'true';
         const result = await pool.query(
-            `SELECT c.id, c.title, c.category, c.is_group, c.created_at, c.updated_at,
+            `SELECT c.id, c.title, c.category, c.is_group, c.is_archived, c.created_at, c.updated_at,
               (SELECT content FROM messages WHERE conversation_id = c.id ORDER BY created_at DESC LIMIT 1) as last_message,
               (SELECT COUNT(*) FROM messages WHERE conversation_id = c.id)::int as message_count
        FROM conversations c
-       WHERE c.user_id = $1
-          OR c.id IN (SELECT conversation_id FROM conversation_members WHERE user_id = $1)
+       WHERE (c.user_id = $1 OR c.id IN (SELECT conversation_id FROM conversation_members WHERE user_id = $1))
+         AND c.is_archived = $2
        ORDER BY c.updated_at DESC`,
-            [req.user.userId]
+            [req.user.userId, archived]
         );
         res.json({ conversations: result.rows });
     } catch (err) {
         console.error('List conversations error:', err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// POST /api/conversations/:id/archive
+router.post('/:id/archive', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const result = await pool.query(
+            'UPDATE conversations SET is_archived = NOT is_archived, updated_at = NOW() WHERE id = $1 AND user_id = $2 RETURNING is_archived',
+            [id, req.user.userId]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Conversation not found or unauthorized' });
+        }
+
+        res.json({ is_archived: result.rows[0].is_archived });
+    } catch (err) {
+        console.error('Archive conversation error:', err);
         res.status(500).json({ error: 'Internal server error' });
     }
 });
