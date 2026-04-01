@@ -8,7 +8,8 @@
 		Info, 
 		HelpCircle,
 		X,
-		MessageSquare
+		MessageSquare,
+		ListFilter
 	} from '@lucide/svelte';
 
 	const icons = {
@@ -16,7 +17,8 @@
 		success: CheckCircle2,
 		error: AlertCircle,
 		confirm: HelpCircle,
-		prompt: MessageSquare
+		prompt: MessageSquare,
+		select: ListFilter
 	};
 
 	const colors = {
@@ -24,7 +26,8 @@
 		success: 'text-emerald-400 bg-emerald-400/10 border-emerald-400/20',
 		error: 'text-rose-400 bg-rose-400/10 border-rose-400/20',
 		confirm: 'text-purple-400 bg-purple-400/10 border-purple-400/20',
-		prompt: 'text-amber-400 bg-amber-400/10 border-amber-400/20'
+		prompt: 'text-amber-400 bg-amber-400/10 border-amber-400/20',
+		select: 'text-indigo-400 bg-indigo-400/10 border-indigo-400/20'
 	};
 
 	let Icon = $derived(icons[$ui.type]);
@@ -68,11 +71,22 @@
 							onkeydown={(e) => e.key === 'Enter' && ui.close($ui.promptValue)}
 						/>
 					</div>
+				{:else if $ui.type === 'select' && $ui.options}
+					<div class="w-full pt-4 max-h-[40dvh] overflow-y-auto niva-scrollbar flex flex-col gap-2" in:fly={{ y: 10, duration: 300 }}>
+						{#each $ui.options as option}
+							<button
+								onclick={() => ui.close(option.value)}
+								class="w-full flex items-center justify-between p-3.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/10 transition-all cursor-pointer text-left group"
+							>
+								<span class="text-sm font-medium text-niva-text group-hover:text-niva-accent transition-colors">{option.label}</span>
+							</button>
+						{/each}
+					</div>
 				{/if}
 			</div>
 
 			<div class="flex flex-col sm:flex-row gap-3 pt-2">
-				{#if $ui.type === 'confirm'}
+				{#if $ui.type === 'confirm' || $ui.type === 'prompt' || $ui.type === 'select'}
 					<button 
 						onclick={() => ui.close(false)}
 						class="flex-1 h-12 rounded-xl bg-white/5 border border-white/5 text-niva-text-secondary font-bold text-xs uppercase tracking-widest hover:bg-white/10 hover:text-niva-text transition-all cursor-pointer"
@@ -80,12 +94,14 @@
 						{$ui.cancelText || 'Cancel'}
 					</button>
 				{/if}
-				<button 
-					onclick={() => ui.close($ui.type === 'prompt' ? $ui.promptValue : true)}
-					class="flex-1 h-12 rounded-xl {$ui.type === 'error' ? 'bg-rose-500 text-white' : 'bg-niva-accent text-niva-bg'} font-bold text-xs uppercase tracking-widest hover:opacity-90 hover:scale-[1.02] active:scale-95 transition-all cursor-pointer shadow-lg niva-glow-sm"
-				>
-					{$ui.confirmText || 'OK'}
-				</button>
+				{#if $ui.type !== 'select'}
+					<button 
+						onclick={() => ui.close($ui.type === 'prompt' ? $ui.promptValue : true)}
+						class="flex-1 h-12 rounded-xl {$ui.type === 'error' ? 'bg-rose-500 text-white' : 'bg-niva-accent text-niva-bg'} font-bold text-xs uppercase tracking-widest hover:opacity-90 hover:scale-[1.02] active:scale-95 transition-all cursor-pointer shadow-lg niva-glow-sm"
+					>
+						{$ui.confirmText || 'OK'}
+					</button>
+				{/if}
 			</div>
 
 			<!-- Close button top-right -->

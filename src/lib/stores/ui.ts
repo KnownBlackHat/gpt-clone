@@ -10,13 +10,14 @@ interface Toast {
 
 interface AlertState {
     show: boolean;
-    type: AlertType | 'prompt';
+    type: AlertType | 'prompt' | 'select';
     title: string;
     message: string;
     confirmText?: string;
     cancelText?: string;
     placeholder?: string;
     promptValue?: string;
+    options?: { label: string; value: string }[];
     resolve?: (value: any) => void;
     toasts: Toast[];
 }
@@ -72,6 +73,20 @@ function createUIStore() {
                     promptValue: defaultValue,
                     placeholder,
                     confirmText: 'Submit',
+                    cancelText: 'Cancel',
+                    resolve,
+                }));
+            });
+        },
+        select: (message: string, options: { label: string; value: string }[], title = 'Select Option') => {
+            return new Promise<string | null>((resolve) => {
+                update(s => ({
+                    ...s,
+                    show: true,
+                    type: 'select',
+                    title,
+                    message,
+                    options,
                     cancelText: 'Cancel',
                     resolve,
                 }));

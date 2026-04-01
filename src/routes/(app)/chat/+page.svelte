@@ -374,22 +374,41 @@
 	async function handleMoveToProject(id: string) {
 		const conv = conversations.find((c) => c.id === id);
 		if (!conv) return;
+
+		const projectNames = Array.from(new Set(conversations.map(c => c.category).filter(c => c && c !== 'General')));
 		
-		const currentCategory = conv.category && conv.category !== 'General' ? conv.category : '';
-		const newCategory = await ui.prompt('Enter project/category name (leave empty for General):', 'Move to Project', currentCategory);
+		const options = [
+			{ label: 'General (Remove from Project)', value: 'General' },
+			...projectNames.map(p => ({ label: p as string, value: p as string })),
+			{ label: '+ Create New Project', value: '_new_' }
+		];
+
+		const selected = await ui.select('Choose a project to move this chat to:', options, 'Move to Project');
+		if (selected === null) {
+			activeMenuId = null;
+			return;
+		}
+
+		let finalCategory = selected;
+		if (selected === '_new_') {
+			const currentCategory = conv.category && conv.category !== 'General' ? conv.category : '';
+			const newCategory = await ui.prompt('Enter new project name:', 'Create Project', currentCategory);
+			if (newCategory === null) {
+				activeMenuId = null;
+				return;
+			}
+			finalCategory = newCategory.trim() || 'General';
+		}
 		
-		if (newCategory !== null) {
-			const finalCategory = newCategory.trim() || 'General';
-			if (finalCategory !== (conv.category || 'General')) {
-				try {
-					await api.conversations.updateCategory(id, finalCategory);
-					conversations = conversations.map((c) =>
-						c.id === id ? { ...c, category: finalCategory } : c
-					);
-					ui.toast('Moved to project successfully', 'success');
-				} catch (err: any) {
-					ui.toast(err.message || 'Failed to move conversation.', 'error');
-				}
+		if (finalCategory !== (conv.category || 'General')) {
+			try {
+				await api.conversations.updateCategory(id, finalCategory);
+				conversations = conversations.map((c) =>
+					c.id === id ? { ...c, category: finalCategory } : c
+				);
+				ui.toast('Moved to project successfully', 'success');
+			} catch (err: any) {
+				ui.toast(err.message || 'Failed to move conversation.', 'error');
 			}
 		}
 		activeMenuId = null;

@@ -367,16 +367,42 @@
 
 	async function handleMoveToProject() {
 		if (!conversationId) return;
-		// Prompt for project name. We don't have current category in this view, so start blank.
-		const newCategory = await ui.prompt('Enter project/category name (leave empty for General):', 'Move to Project', '');
-		if (newCategory !== null) {
-			const finalCategory = newCategory.trim() || 'General';
-			try {
-				await api.conversations.updateCategory(conversationId, finalCategory);
-				ui.toast('Moved to project successfully', 'success');
-			} catch (err: any) {
-				ui.toast(err.message || "Failed to move conversation.", 'error');
+
+		let projects: string[] = [];
+		try {
+			const data = await api.conversations.list();
+			projects = Array.from(new Set(data.conversations.map(c => c.category).filter(c => c && c !== 'General')));
+		} catch (err) {
+			console.error("Failed to load projects for menu");
+		}
+
+		const options = [
+			{ label: 'General (Remove from Project)', value: 'General' },
+			...projects.map(p => ({ label: p as string, value: p as string })),
+			{ label: '+ Create New Project', value: '_new_' }
+		];
+
+		const selected = await ui.select('Choose a project to move this chat to:', options, 'Move to Project');
+		if (selected === null) {
+			isMenuOpen = false;
+			return;
+		}
+
+		let finalCategory = selected;
+		if (selected === '_new_') {
+			const newCategory = await ui.prompt('Enter new project name:', 'Create Project', '');
+			if (newCategory === null) {
+				isMenuOpen = false;
+				return;
 			}
+			finalCategory = newCategory.trim() || 'General';
+		}
+
+		try {
+			await api.conversations.updateCategory(conversationId, finalCategory);
+			ui.toast('Moved to project successfully', 'success');
+		} catch (err: any) {
+			ui.toast(err.message || "Failed to move conversation.", 'error');
 		}
 		isMenuOpen = false;
 	}

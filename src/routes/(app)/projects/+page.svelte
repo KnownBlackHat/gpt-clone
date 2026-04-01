@@ -2,7 +2,8 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { api, type Conversation } from '$lib/api';
-	import { FolderOpen, ArrowRight, MessageSquare, Loader2 } from '@lucide/svelte';
+	import { FolderOpen, ArrowRight, MessageSquare, Loader2, FolderPlus } from '@lucide/svelte';
+	import { ui } from '$lib/stores/ui';
 
 	let conversations = $state<Conversation[]>([]);
 	let isLoading = $state(true);
@@ -12,14 +13,11 @@
 		for (const c of conversations) {
 			if (c.is_archived) continue;
 			const cat = c.category || 'General';
+			if (cat === 'General') continue;
 			groups[cat] = (groups[cat] || 0) + 1;
 		}
 		return Object.entries(groups).map(([name, count]) => ({ name, count }))
-			.sort((a, b) => {
-				if (a.name === 'General') return -1;
-				if (b.name === 'General') return 1;
-				return a.name.localeCompare(b.name);
-			});
+			.sort((a, b) => a.name.localeCompare(b.name));
 	});
 
 	onMount(async () => {
@@ -32,16 +30,42 @@
 			isLoading = false;
 		}
 	});
+
+	async function handleCreateProject() {
+		const projectName = await ui.prompt("Enter new project name:", "Create Project", "");
+		if (projectName !== null && projectName.trim()) {
+			const finalName = projectName.trim();
+			if (finalName.toLowerCase() === 'general') {
+				ui.toast("Cannot use 'General' as a project name.", 'error');
+				return;
+			}
+			try {
+				const { conversation } = await api.conversations.create('New Chat', finalName);
+				goto(`/chat/${conversation.id}`);
+			} catch (err) {
+				ui.toast('Failed to create project.', 'error');
+			}
+		}
+	}
 </script>
 
 <div class="flex-1 overflow-y-auto niva-scrollbar p-6 md:p-12 relative z-10 w-full h-full">
 	<div class="max-w-6xl mx-auto w-full">
-		<header class="mb-8 flex flex-col gap-2">
-			<h1 class="text-2xl md:text-3xl font-bold text-niva-text tracking-tight font-[Manrope] flex items-center gap-3">
-				<FolderOpen size={28} class="text-niva-accent" />
-				Projects
-			</h1>
-			<p class="text-sm text-niva-text-secondary">Organize your chats into dedicated workspaces.</p>
+		<header class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+			<div class="flex flex-col gap-2">
+				<h1 class="text-2xl md:text-3xl font-bold text-niva-text tracking-tight font-[Manrope] flex items-center gap-3">
+					<FolderOpen size={28} class="text-niva-accent" />
+					Projects
+				</h1>
+				<p class="text-sm text-niva-text-secondary">Organize your chats into dedicated workspaces.</p>
+			</div>
+			<button 
+				onclick={handleCreateProject}
+				class="w-fit px-5 py-2.5 bg-niva-accent text-niva-bg font-bold text-sm tracking-widest uppercase rounded-xl hover:scale-105 transition-transform flex items-center gap-2 cursor-pointer shadow-lg shadow-niva-accent/20"
+			>
+				<FolderPlus size={18} />
+				<span>Create Project</span>
+			</button>
 		</header>
 
 		{#if isLoading}
