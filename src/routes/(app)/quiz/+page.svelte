@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { api, type QuizQuestion } from '$lib/api';
-	import { 
+	import { api, type QuizQuestion, type Quiz } from '$lib/api';
+	import {
 		Sparkles, 
 		Brain, 
 		ChevronRight, 
@@ -24,24 +24,24 @@
 	type State = 'setup' | 'generating' | 'quiz' | 'summary';
 	type Difficulty = 'easy' | 'medium' | 'hard';
 
-	let state = $state<State>('setup');
+	let quizState: any = $state('setup');
 
 	// Setup
 	let topic = $state('');
 	let questionCount = $state(5);
-	let difficulty = $state<Difficulty>('medium');
+	let difficulty = $state('medium' as Difficulty);
 	let isContextBased = $state(false);
-	let quizContext = $state<string | null>(null);
-	let selectedPdf = $state<string | null>(null);
-	let pdfName = $state<string | null>(null);
+	let quizContext: string | null = $state(null);
+	let selectedPdf: string | null = $state(null);
+	let pdfName: string | null = $state(null);
 	let pdfInput: HTMLInputElement;
 
 	// Advanced Features
 	let showAdvanced = $state(false);
 	let syllabus = $state('');
 	let marksPerQuestion = $state(1);
-	let pyqData = $state<string | null>(null);
-	let pyqName = $state<string | null>(null);
+	let pyqData: string | null = $state(null);
+	let pyqName: string | null = $state(null);
 	let pyqInput: HTMLInputElement;
 	let showSolutions = $state(false);
 
@@ -103,19 +103,19 @@
 
 	// Quiz runtime
 	let quizTitle = $state('');
-	let questions = $state<QuizQuestion[]>([]);
+	let questions: QuizQuestion[] = $state([]);
 	let currentIndex = $state(0);
-	let selectedOption = $state<number | null>(null);
+	let selectedOption: number | null = $state(null);
 	let score = $state(0);
-	let answers = $state<{questionIndex: number, selectedIndex: number, isCorrect: boolean}[]>([]);
-	let error = $state<string | null>(null);
+	let answers: {questionIndex: number, selectedIndex: number, isCorrect: boolean}[] = $state([]);
+	let error: string | null = $state(null);
 	let streak = $state(0);
 	let bestStreak = $state(0);
 
 	// Timer
 	let timePerQuestion = $derived(difficulty === 'easy' ? 30 : difficulty === 'medium' ? 20 : 12);
 	let timeLeft = $state(0);
-	let timerInterval = $state<ReturnType<typeof setInterval> | null>(null);
+	let timerInterval: ReturnType<typeof setInterval> | null = $state(null);
 
 	// History
 	interface QuizResult {
@@ -126,7 +126,7 @@
 		grade: string;
 		timestamp: number;
 	}
-	let quizHistory = $state<Quiz[]>([]);
+	let quizHistory: Quiz[] = $state([]);
 	let showHistory = $state(false);
 	let isLoadingHistory = $state(false);
 
@@ -138,18 +138,6 @@
 		hard:   { label: 'Hard',   color: 'text-rose-400 bg-rose-400/10 border-rose-400/20',         desc: 'Expert level' },
 	};
 
-	function loadHistory() {
-		try {
-			const stored = sessionStorage.getItem('niva_quiz_history');
-			if (stored) quizHistory = JSON.parse(stored);
-		} catch { /* ignore */ }
-	}
-
-	function saveHistory() {
-		try {
-			sessionStorage.setItem('niva_quiz_history', JSON.stringify(quizHistory.slice(0, 20)));
-		} catch { /* ignore */ }
-	}
 
 	function getGrade(pct: number): string {
 		if (pct >= 95) return 'A+';
@@ -200,7 +188,7 @@
 	async function generateQuiz() {
 		if (!topic.trim() && !pdfName && !syllabus) return;
 		try {
-			state = 'generating';
+			quizState = 'generating';
 			error = null;
 			showSolutions = false;
 			
@@ -222,11 +210,11 @@
 			bestStreak = 0;
 			answers = [];
 			selectedOption = null;
-			state = 'quiz';
+			quizState = 'quiz';
 			startTimer();
 		} catch (err: any) {
 			error = err.message || 'Failed to generate quiz. Please try again.';
-			state = 'setup';
+			quizState = 'setup';
 		}
 	}
 
@@ -297,12 +285,12 @@
 				total_questions: questions.length,
 				grade: getGrade(pct)
 			});
-			state = 'summary';
+			quizState = 'summary';
 		}
 	}
 	async function viewQuiz(id: string) {
 		try {
-			state = 'summary';
+			quizState = 'summary';
 			const data = await api.quiz.getById(id);
 			quizTitle = data.quiz.title;
 			questions = data.quiz.questions;
@@ -322,7 +310,7 @@
 
 	function restart() {
 		stopTimer();
-		state = 'setup';
+		quizState = 'setup';
 		clearContext();
 		removePdf();
 		removePyq();
@@ -351,7 +339,7 @@
 			<h1 class="text-sm font-semibold tracking-tight">AI Quiz Generator</h1>
 		</div>
 		<div class="flex items-center gap-3">
-			{#if state === 'quiz'}
+			{#if quizState === 'quiz'}
 				<!-- Streak -->
 				{#if streak > 1}
 					<div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-orange-500/10 border border-orange-500/20" in:scale={{ duration: 300 }}>
@@ -396,7 +384,7 @@
 		<div class="absolute bottom-1/4 right-1/4 w-80 h-80 bg-purple-500/5 blur-[150px] rounded-full -z-10 animate-pulse" style="animation-delay: 1s"></div>
 
 		<div class="w-full max-w-2xl mx-auto my-auto">
-			{#if state === 'setup'}
+			{#if quizState === 'setup'}
 				<div in:fly={{ y: 20, duration: 600 }} class="glass-panel p-8 md:p-10 rounded-[2rem] border border-white/10 shadow-2xl space-y-8 relative overflow-hidden group">
 					<div class="absolute -top-4 -right-4 w-24 h-24 bg-niva-accent/10 blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
 
@@ -594,7 +582,7 @@
 
 						<button 
 							onclick={generateQuiz}
-							disabled={!topic.trim() || state === 'generating'}
+							disabled={!topic.trim() || quizState === 'generating'}
 							class="w-full h-14 rounded-2xl bg-niva-accent text-niva-bg font-bold text-sm flex items-center justify-center gap-2 hover:opacity-90 hover:scale-[1.02] transition-all disabled:opacity-50 disabled:scale-100 niva-glow-sm mt-4 cursor-pointer"
 						>
 							<Brain size={18} />
@@ -607,7 +595,7 @@
 						<div in:fly={{ y: 10, duration: 300 }} class="border-t border-white/10 pt-6 mt-2 space-y-3">
 							<div class="flex items-center justify-between">
 								<h3 class="text-xs font-bold text-niva-text-secondary uppercase tracking-widest">Recent Quizzes</h3>
-								<button onclick={() => { quizHistory = []; saveHistory(); }} class="text-[10px] text-niva-error/70 hover:text-niva-error cursor-pointer font-medium">Clear</button>
+								<button onclick={() => { quizHistory = []; }} class="text-[10px] text-niva-error/70 hover:text-niva-error cursor-pointer font-medium">Clear</button>
 							</div>
 							<div class="space-y-2 max-h-48 overflow-y-auto niva-scrollbar">
 								{#each quizHistory as result}
@@ -630,7 +618,7 @@
 					{/if}
 				</div>
 
-			{:else if state === 'generating'}
+			{:else if quizState === 'generating'}
 				<div in:fade class="flex flex-col items-center justify-center space-y-6 text-center">
 					<div class="relative">
 						<div class="w-24 h-24 rounded-full border-4 border-niva-accent/20 border-t-niva-accent animate-spin"></div>
@@ -646,7 +634,7 @@
 					</div>
 				</div>
 
-			{:else if state === 'quiz' && currentQuestion}
+			{:else if quizState === 'quiz' && currentQuestion}
 				<div in:fly={{ x: 50, duration: 400 }} class="space-y-8">
 					<!-- Timer bar -->
 					<div class="w-full h-1 bg-white/5 rounded-full overflow-hidden">
@@ -771,7 +759,7 @@
 					{/if}
 				</div>
 
-			{:else if state === 'summary'}
+			{:else if quizState === 'summary'}
 				{@const pct = Math.round((score / questions.length) * 100)}
 				{@const grade = getGrade(pct)}
 				<div in:fly={{ y: 30, duration: 600 }} class="glass-panel p-10 rounded-[2.5rem] border border-white/10 text-center space-y-8 relative overflow-hidden group">
@@ -872,7 +860,7 @@
 
 					<div class="space-y-3 pt-4">
 						<button 
-							onclick={() => { state = 'quiz'; currentIndex = 0; score = 0; streak = 0; bestStreak = 0; selectedOption = null; answers = []; showHistory = false; startTimer(); }}
+							onclick={() => { quizState = 'quiz'; currentIndex = 0; score = 0; streak = 0; bestStreak = 0; selectedOption = null; answers = []; showHistory = false; startTimer(); }}
 							class="w-full h-14 rounded-2xl bg-niva-accent text-niva-bg font-bold text-sm flex items-center justify-center gap-2 hover:opacity-90 transition-all hover:scale-[1.01] niva-glow-sm cursor-pointer"
 						>
 							<RotateCcw size={18} />

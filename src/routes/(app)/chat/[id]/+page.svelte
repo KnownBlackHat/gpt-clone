@@ -249,7 +249,7 @@
 				errorMessage = "File is too large for the server to process. Please try a smaller file.";
 			} else {
 				errorMessage = err.message || "Failed to send message. Please try again.";
-				ui.toast(errorMessage, 'error');
+				ui.toast(errorMessage as string, 'error');
 			}
 		} finally {
 			isLoading = false;
@@ -347,7 +347,7 @@
 		} catch (err: any) {
 			console.error("Share failed:", err);
 			errorMessage = err.message || "Failed to generate share link.";
-			ui.toast(errorMessage, 'error');
+			ui.toast(errorMessage as string, 'error');
 		} finally {
 			isLoading = false;
 		}
@@ -375,7 +375,7 @@
 				goto('/chat');
 			} catch (err: any) {
 				errorMessage = err.message || "Failed to delete conversation.";
-				ui.toast(errorMessage, 'error');
+				ui.toast(errorMessage as string, 'error');
 			}
 		}
 		isMenuOpen = false;
@@ -611,11 +611,13 @@
 	</div>
 </div>
 
+{#if conversationId}
 <GroupPanel
 	conversationId={conversationId}
 	isOwner={isConvOwner}
 	bind:visible={isGroupVisible}
 />
+{/if}
 
 <style>
 </style>

@@ -655,7 +655,7 @@
 							message={msg} 
 							onEdit={handleEditMessage}
 							onRetry={handleRetryMessage}
-							onShare={handleSidebarShare}
+							onShare={() => { if(activeConversationId) handleSidebarShare(activeConversationId) }}
 							onGenerateQuiz={handleGenerateQuiz}
 						/>
 					{/each}

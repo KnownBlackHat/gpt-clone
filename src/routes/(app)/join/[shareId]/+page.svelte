@@ -6,7 +6,7 @@
 	import { Loader2, UserPlus, AlertCircle } from '@lucide/svelte';
 	import { fade } from 'svelte/transition';
 
-	const shareId = page.params.shareId;
+	const shareId = page.params.shareId as string;
 	let status = $state<'loading' | 'success' | 'error'>('loading');
 	let errorMessage = $state('');
 

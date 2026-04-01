@@ -22,6 +22,7 @@
 	const colors = {
 		info: 'text-blue-400 bg-blue-400/10 border-blue-400/20',
 		success: 'text-emerald-400 bg-emerald-400/10 border-emerald-400/20',
+		error: 'text-rose-400 bg-rose-400/10 border-rose-400/20',
 		confirm: 'text-purple-400 bg-purple-400/10 border-purple-400/20',
 		prompt: 'text-amber-400 bg-amber-400/10 border-amber-400/20'
 	};

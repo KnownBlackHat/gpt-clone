@@ -332,6 +332,8 @@ export interface Conversation {
     title: string;
     category: string;
     is_group?: boolean;
+    is_archived?: boolean;
+    user_id?: string;
     created_at: string;
     updated_at: string;
     last_message?: string;
