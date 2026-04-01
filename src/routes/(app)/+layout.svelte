@@ -9,6 +9,8 @@
 		User,
 		LogOut,
 		Sparkles,
+		LayoutList,
+		Calculator,
 	} from '@lucide/svelte';
 
 	let { children } = $props();
@@ -16,6 +18,8 @@
 
 	const navItems = [
 		{ icon: MessageCircle, label: 'Recent', href: '/chat' },
+		{ icon: LayoutList, label: 'Quiz', href: '/quiz' },
+		{ icon: Calculator, label: 'Calculator', href: '/calculator' },
 		{ icon: Settings, label: 'Settings', href: '/settings' },
 	];
 
@@ -39,7 +43,7 @@
 </script>
 
 <!-- Desktop Sidebar -->
-<div class="flex h-screen w-screen overflow-hidden bg-niva-bg">
+<div class="flex h-[100dvh] w-full overflow-hidden bg-niva-bg">
 	<!-- Sidebar -->
 	<aside class="hidden md:flex flex-col w-[72px] h-full bg-sidebar border-r border-sidebar-border shrink-0">
 		<!-- Branding -->

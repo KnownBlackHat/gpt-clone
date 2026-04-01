@@ -80,6 +80,20 @@ export const api = {
          * Delete an entire conversation thread.
          */
         delete: (id: string) => request(`/conversations/${id}`, { method: 'DELETE' }),
+
+        /**
+         * Generate a public share link for a conversation.
+         */
+        share: (id: string) => request<{ shareId: string }>(`/conversations/${id}/share`, { method: 'POST' }),
+
+        /**
+         * Rename a conversation.
+         */
+        rename: (id: string, title: string) =>
+            request<{ conversation: any }>(`/conversations/${id}`, {
+                method: 'PUT',
+                body: { title },
+            }),
     },
 
     messages: {
@@ -97,6 +111,23 @@ export const api = {
                 `/conversations/${conversationId}/messages`,
                 { method: 'POST', body: { content, imageUrl, pdfData, isSearchEnabled } }
             ),
+
+        /**
+         * Update an existing message (usually for editing).
+         */
+        edit: (messageId: string, content: string) =>
+            request<{ message: Message; needsResend: boolean }>(`/messages/${messageId}`, {
+                method: 'PUT',
+                body: { content },
+            }),
+
+        /**
+         * Regenerate an assistant response.
+         */
+        retry: (messageId: string) =>
+            request<{ userMessage: Message; needsResend: boolean }>(`/messages/${messageId}/retry`, {
+                method: 'POST',
+            }),
     },
 
     user: {
@@ -115,6 +146,25 @@ export const api = {
          * Permanent account deletion. Use with caution.
          */
         deleteAccount: () => request('/user', { method: 'DELETE' }),
+    },
+
+    public: {
+        /**
+         * Fetch a shared conversation by its share ID.
+         */
+        getShared: (shareId: string) =>
+            request<{ conversation: any; messages: Message[] }>(`/public/share/${shareId}`),
+    },
+
+    quiz: {
+        /**
+         * Generate a quiz based on a topic.
+         */
+        generate: (topic: string, amount: number) =>
+            request<{ title: string; questions: QuizQuestion[] }>('/quiz/generate', {
+                method: 'POST',
+                body: { topic, amount },
+            }),
     },
 };
 
@@ -144,4 +194,11 @@ export interface Message {
     content: string;
     image_url?: string;
     created_at: string;
+}
+
+export interface QuizQuestion {
+    question: string;
+    options: string[];
+    correctIndex: number;
+    explanation: string;
 }

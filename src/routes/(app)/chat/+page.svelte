@@ -13,6 +13,10 @@
 		FileText,
 		X,
 		Globe,
+		MoreVertical,
+		Share2,
+		Edit2,
+		Trash2,
 	} from '@lucide/svelte';
 	import ChatMessage from '$lib/components/ChatMessage.svelte';
 
@@ -26,6 +30,7 @@
 	let isSearchEnabled = $state(false);
 	let messagesContainer: HTMLElement;
 	let textareaElement = $state<HTMLTextAreaElement | null>(null);
+	let activeMenuId = $state<string | null>(null);
 
 	// Auto-resize textarea
 	$effect(() => {
@@ -208,8 +213,69 @@
 		}
 	}
 
+	function toggleMenu(e: Event, id: string) {
+		e.stopPropagation();
+		activeMenuId = activeMenuId === id ? null : id;
+	}
+
+	async function handleDeleteConversation(id: string) {
+		try {
+			await api.conversations.delete(id);
+			conversations = conversations.filter(c => c.id !== id);
+			if (activeConversationId === id) {
+				activeConversationId = null;
+				messages = [];
+			}
+		} catch {
+			// ignore
+		}
+		activeMenuId = null;
+	}
+
+	async function handleRename(id: string) {
+		const conv = conversations.find(c => c.id === id);
+		if (!conv) return;
+		
+		const newTitle = prompt('Enter new conversation title:', conv.title);
+		if (newTitle && newTitle !== conv.title) {
+			try {
+				await api.conversations.rename(id, newTitle);
+				conversations = conversations.map(c => 
+					c.id === id ? { ...c, title: newTitle } : c
+				);
+			} catch {
+				alert('Failed to rename conversation.');
+			}
+		}
+		activeMenuId = null;
+	}
+
+	async function handleSidebarShare(id: string) {
+		try {
+			const { shareId } = await api.conversations.share(id);
+			const shareUrl = `${window.location.origin}/share/${shareId}`;
+			
+			if (navigator.clipboard && window.isSecureContext) {
+				await navigator.clipboard.writeText(shareUrl);
+				alert("Share link copied to clipboard!");
+			} else {
+				alert(`Share link: ${shareUrl}`);
+			}
+		} catch {
+			alert('Failed to generate share link.');
+		}
+		activeMenuId = null;
+	}
+
 	$effect(() => {
 		loadConversations();
+	});
+
+	// Close menu on click outside
+	$effect(() => {
+		const handleClick = () => activeMenuId = null;
+		window.addEventListener('click', handleClick);
+		return () => window.removeEventListener('click', handleClick);
 	});
 </script>
 
@@ -224,16 +290,43 @@
 				<p class="text-xs text-niva-text-secondary p-3 text-center">No conversations yet</p>
 			{:else}
 				{#each conversations as conv}
-					<button
-						onclick={() => selectConversation(conv)}
-						class="w-full text-left p-3 rounded-xl transition-all duration-200 cursor-pointer group
-							{activeConversationId === conv.id
-								? 'bg-niva-accent/10 border border-niva-accent/20'
-								: 'hover:bg-white/5 border border-transparent'}"
-					>
-						<p class="text-sm font-medium text-niva-text truncate">{conv.title}</p>
-						<p class="text-[11px] text-niva-text-secondary mt-1 truncate">{conv.last_message || 'No messages'}</p>
-					</button>
+					<div class="relative group/item">
+						<button
+							onclick={() => selectConversation(conv)}
+							class="w-full text-left p-3 rounded-xl transition-all duration-200 cursor-pointer group
+								{activeConversationId === conv.id
+									? 'bg-niva-accent/10 border border-niva-accent/20'
+									: 'hover:bg-white/5 border border-transparent'}"
+						>
+							<p class="text-sm font-medium text-niva-text truncate pr-6">{conv.title}</p>
+							<p class="text-[11px] text-niva-text-secondary mt-1 truncate">{conv.last_message || 'No messages'}</p>
+						</button>
+						
+						<button
+							onclick={(e) => toggleMenu(e, conv.id)}
+							class="absolute top-3 right-2 p-1 rounded-lg hover:bg-white/10 text-niva-text-secondary opacity-0 group-hover/item:opacity-100 transition-opacity cursor-pointer"
+						>
+							<MoreVertical size={14} />
+						</button>
+
+						{#if activeMenuId === conv.id}
+							<div class="absolute right-2 top-10 w-48 bg-niva-surface-2 border border-niva-glass-border rounded-xl shadow-2xl z-50 p-1 animate-in fade-in zoom-in duration-200">
+								<button onclick={() => handleSidebarShare(conv.id)} class="w-full flex items-center gap-2 px-3 py-2 text-xs text-niva-text hover:bg-white/5 rounded-lg transition-colors cursor-pointer text-left">
+									<Share2 size={14} class="text-niva-text-secondary" />
+									Share Chat
+								</button>
+								<button onclick={() => handleRename(conv.id)} class="w-full flex items-center gap-2 px-3 py-2 text-xs text-niva-text hover:bg-white/5 rounded-lg transition-colors cursor-pointer text-left">
+									<Edit2 size={14} class="text-niva-text-secondary" />
+									Rename Chat
+								</button>
+								<div class="h-px bg-niva-glass-border my-1"></div>
+								<button onclick={() => handleDeleteConversation(conv.id)} class="w-full flex items-center gap-2 px-3 py-2 text-xs text-niva-error hover:bg-niva-error-bg/30 rounded-lg transition-colors cursor-pointer text-left">
+									<Trash2 size={14} />
+									Delete Chat
+								</button>
+							</div>
+						{/if}
+					</div>
 				{/each}
 			{/if}
 		</div>

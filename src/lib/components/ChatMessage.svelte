@@ -3,14 +3,37 @@
 	import { markedHighlight } from 'marked-highlight';
 	import hljs from 'highlight.js';
 	import DOMPurify from 'dompurify';
-	import { Sparkles, User as UserIcon, Copy, Check } from '@lucide/svelte';
+	import { Sparkles, User as UserIcon, Copy, Check, Edit2, RotateCcw, X, Send, Share2 } from '@lucide/svelte';
 
 	// Import highlight.js theme
 	import 'highlight.js/styles/atom-one-dark.css';
 
-	let { message } = $props<{ message: any }>();
+	let { message, onEdit, onRetry, onShare } = $props<{ 
+		message: any, 
+		onEdit?: (id: string, newContent: string) => void,
+		onRetry?: (id: string) => void,
+		onShare?: (id: string) => void
+	}>();
 	let isAssistant = $derived(message.role === 'assistant');
 	let copied = $state(false);
+	let isEditing = $state(false);
+	let editContent = $state(message.content);
+
+	function startEditing() {
+		editContent = message.content;
+		isEditing = true;
+	}
+
+	function cancelEditing() {
+		isEditing = false;
+	}
+
+	function saveEdit() {
+		if (editContent.trim() && editContent !== message.content) {
+			onEdit?.(message.id, editContent);
+		}
+		isEditing = false;
+	}
 
 	async function copyToClipboard() {
 		const text = message.content;
@@ -124,7 +147,7 @@
 	}
 </script>
 
-<div class="flex gap-4 {message.role === 'user' ? 'flex-row-reverse' : 'flex-row'} group animate-slide-up">
+<div class="flex md:gap-4 gap-3 {message.role === 'user' ? 'flex-row-reverse' : 'flex-row'} group animate-slide-up">
 	<!-- Avatar -->
 	<div class="shrink-0 pt-1">
 		{#if message.role === 'assistant'}
@@ -139,9 +162,9 @@
 	</div>
 
 	<!-- Content -->
-	<div class="flex flex-col max-w-[85%] {message.role === 'user' ? 'items-end' : 'items-start'}">
+	<div class="flex flex-col md:max-w-[85%] max-w-[92%] {message.role === 'user' ? 'items-end' : 'items-start'}">
 		<div
-			class="px-5 py-3.5 rounded-2xl text-sm leading-relaxed transition-all duration-300
+			class="md:px-5 px-4 md:py-3.5 py-3 rounded-2xl md:text-sm text-[13px] leading-relaxed transition-all duration-300
 				{message.role === 'user'
 					? 'bg-niva-accent text-niva-bg font-medium rounded-tr-none niva-glow-sm'
 					: 'glass-panel text-niva-text rounded-tl-none border border-white/5'}"
@@ -150,30 +173,77 @@
 				<div class="markdown-content" use:setupCodeBlocks={message.content}>
 					{@html renderMarkdown(message.content)}
 				</div>
-				{#if isAssistant}
-					<div class="mt-3 flex items-center justify-end border-t border-white/5 pt-2">
+			{:else}
+				{#if isEditing}
+					<div class="flex flex-col gap-2 min-w-[200px] md:min-w-[400px]">
+						<textarea
+							bind:value={editContent}
+							class="w-full bg-white/10 border border-white/20 rounded-xl p-3 text-sm text-niva-bg placeholder:text-niva-bg/50 outline-none focus:border-white/40 resize-none min-h-[80px]"
+						></textarea>
+						<div class="flex justify-end gap-2">
+							<button 
+								onclick={cancelEditing}
+								class="px-3 py-1.5 rounded-lg hover:bg-white/10 text-niva-bg/80 text-xs font-medium transition-colors cursor-pointer"
+							>
+								Cancel
+							</button>
+							<button 
+								onclick={saveEdit}
+								class="px-3 py-1.5 rounded-lg bg-niva-bg text-niva-accent text-xs font-medium hover:opacity-90 transition-opacity cursor-pointer flex items-center gap-1.5"
+							>
+								<Send size={12} />
+								Save & Submit
+							</button>
+						</div>
+					</div>
+				{:else}
+					<div class="whitespace-pre-wrap">{message.content}</div>
+					<div class="mt-2 flex items-center justify-end md:opacity-0 group-hover:opacity-100 transition-opacity border-t border-black/5 pt-1.5">
 						<button
-							onclick={copyToClipboard}
-							class="p-1.5 rounded-lg hover:bg-white/5 text-niva-text-secondary hover:text-niva-accent transition-all duration-200 cursor-pointer flex items-center gap-1.5 group"
-							title="Copy response"
+							onclick={startEditing}
+							class="p-1.5 rounded-lg hover:bg-black/5 text-niva-bg/60 hover:text-niva-bg transition-all duration-200 cursor-pointer flex items-center gap-1.5"
+							title="Edit message"
 						>
-							{#if copied}
-								<Check size={14} class="text-green-400" />
-								<span class="text-[10px] font-medium text-green-400">Copied!</span>
-							{:else}
-								<Copy size={14} class="opacity-50 group-hover:opacity-100 transition-opacity" />
-								<span class="text-[10px] font-medium opacity-0 group-hover:opacity-100 transition-opacity">Copy</span>
-							{/if}
+							<Edit2 size={13} />
+							<span class="text-[10px] font-medium">Edit</span>
 						</button>
 					</div>
 				{/if}
-			{:else}
-				<div class="whitespace-pre-wrap">{message.content}</div>
 			{/if}
 		</div>
 
+		{#if isAssistant}
+			<div class="mt-1 flex items-center gap-1 md:opacity-0 group-hover:opacity-100 transition-opacity">
+				<button
+					onclick={copyToClipboard}
+					class="p-1.5 rounded-lg hover:bg-white/5 text-niva-text-secondary hover:text-niva-accent transition-all duration-200 cursor-pointer flex items-center gap-1.5 group/btn"
+					title="Copy response"
+				>
+					{#if copied}
+						<Check size={14} class="text-green-400" />
+					{:else}
+						<Copy size={14} class="opacity-50 group-hover/btn:opacity-100 transition-opacity" />
+					{/if}
+				</button>
+				<button
+					onclick={() => onRetry?.(message.id)}
+					class="p-1.5 rounded-lg hover:bg-white/5 text-niva-text-secondary hover:text-niva-accent transition-all duration-200 cursor-pointer flex items-center gap-1.5 group/btn"
+					title="Retry response"
+				>
+					<RotateCcw size={14} class="opacity-50 group-hover/btn:opacity-100 transition-opacity" />
+				</button>
+				<button
+					onclick={() => onShare?.(message.id)}
+					class="p-1.5 rounded-lg hover:bg-white/5 text-niva-text-secondary hover:text-niva-accent transition-all duration-200 cursor-pointer flex items-center gap-1.5 group/btn"
+					title="Share chat"
+				>
+					<Share2 size={14} class="opacity-50 group-hover/btn:opacity-100 transition-opacity" />
+				</button>
+			</div>
+		{/if}
+
 		{#if message.image_url}
-			<div class="mt-3 rounded-2xl overflow-hidden border border-white/10 shadow-xl max-w-sm group/img relative">
+			<div class="mt-3 rounded-2xl overflow-hidden border border-white/10 shadow-xl max-w-full md:max-w-sm group/img relative">
 				<img src={message.image_url} alt="User upload" class="w-full h-auto object-cover transition-transform duration-500 group-hover/img:scale-105" />
 				<div class="absolute inset-0 bg-black/20 opacity-0 group-hover/img:opacity-100 transition-opacity"></div>
 			</div>
@@ -287,6 +357,43 @@
 	
 	:global(.markdown-content a:hover) {
 		opacity: 0.8;
+	}
+
+	/* Citation styling */
+	:global(.markdown-content a[href*="http"]) {
+		font-size: 0.75em;
+		vertical-align: super;
+		text-decoration: none;
+		background: rgba(175, 198, 255, 0.15);
+		padding: 0.1em 0.4em;
+		border-radius: 0.25rem;
+		margin: 0 0.15em;
+		font-weight: 600;
+		border: 1px solid rgba(175, 198, 255, 0.2);
+	}
+	
+	:global(.markdown-content a[href*="http"]:hover) {
+		background: rgba(175, 198, 255, 0.25);
+		border-color: var(--niva-accent);
+	}
+
+	/* References list at bottom */
+	:global(.markdown-content h3#references) {
+		font-size: 0.9rem;
+		margin-top: 1.5rem;
+		color: var(--niva-text-secondary);
+		border-bottom: none;
+	}
+	
+	:global(.markdown-content h3#references + ul) {
+		font-size: 0.8rem;
+		color: var(--niva-text-secondary);
+		list-style-type: none;
+		padding-left: 0;
+	}
+	
+	:global(.markdown-content h3#references + ul li) {
+		margin-bottom: 0.25rem;
 	}
 
 	:global(.markdown-content hr) {

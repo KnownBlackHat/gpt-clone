@@ -11,6 +11,10 @@
 		FileText,
 		X,
 		Globe,
+		MoreVertical,
+		Share2,
+		Edit2,
+		Trash2,
 	} from '@lucide/svelte';
 
 	import ChatMessage from '$lib/components/ChatMessage.svelte';
@@ -26,6 +30,7 @@
 	let errorMessage = $state<string | null>(null);
 	let isSearchEnabled = $state(false);
 	let textareaElement = $state<HTMLTextAreaElement | null>(null);
+	let isMenuOpen = $state(false);
 
 	// Auto-resize textarea
 	$effect(() => {
@@ -186,6 +191,115 @@
 		}
 	}
 
+	async function handleEdit(messageId: string, newContent: string) {
+		try {
+			isLoading = true;
+			const data = await api.messages.edit(messageId, newContent);
+			
+			// Update messages list: remove everything after the edited message
+			const msgIndex = messages.findIndex(m => m.id === messageId);
+			if (msgIndex !== -1) {
+				messages = messages.slice(0, msgIndex + 1);
+				messages[msgIndex].content = newContent;
+			}
+
+			if (data.needsResend) {
+				// We need to trigger a new response. 
+				// The easiest way is to reuse handleSend logic but for the edited content
+				inputValue = newContent;
+				// Remove the message we just updated from the list because handleSend will add a 'temp' one
+				// or just call the API directly.
+				messages = messages.slice(0, msgIndex); 
+				await handleSend();
+			}
+		} catch (err: any) {
+			errorMessage = err.message || "Failed to edit message.";
+		} finally {
+			isLoading = false;
+		}
+	}
+
+	async function handleRetry(messageId: string) {
+		try {
+			isLoading = true;
+			const data = await api.messages.retry(messageId);
+			
+			// Find the user message that was retried
+			const msgIndex = messages.findIndex(m => m.id === messageId);
+			if (msgIndex !== -1) {
+				// Remove the assistant message and everything after
+				messages = messages.slice(0, msgIndex);
+			}
+
+			if (data.needsResend) {
+				inputValue = data.userMessage.content;
+				// handleSend will add it back
+				messages = messages.filter(m => m.id !== data.userMessage.id);
+				await handleSend();
+			}
+		} catch (err: any) {
+			errorMessage = err.message || "Failed to retry message.";
+		} finally {
+			isLoading = false;
+		}
+	}
+
+	async function handleShare() {
+		if (!conversationId) return;
+		try {
+			isLoading = true;
+			const { shareId } = await api.conversations.share(conversationId);
+			const shareUrl = `${window.location.origin}/share/${shareId}`;
+			
+			if (navigator.clipboard && window.isSecureContext) {
+				await navigator.clipboard.writeText(shareUrl);
+				alert("Share link copied to clipboard!");
+			} else {
+				errorMessage = `Share link: ${shareUrl}`;
+			}
+		} catch (err: any) {
+			errorMessage = err.message || "Failed to generate share link.";
+		} finally {
+			isLoading = false;
+		}
+	}
+
+	async function handleRename() {
+		if (!conversationId) return;
+		const newTitle = prompt('Enter new conversation title:', title);
+		if (newTitle && newTitle !== title) {
+			try {
+				await api.conversations.rename(conversationId, newTitle);
+				title = newTitle;
+			} catch {
+				alert('Failed to rename conversation.');
+			}
+		}
+		isMenuOpen = false;
+	}
+
+	async function handleDelete() {
+		if (!conversationId) return;
+		if (confirm('Are you sure you want to delete this conversation?')) {
+			try {
+				await api.conversations.delete(conversationId);
+				goto('/chat');
+			} catch (err: any) {
+				errorMessage = err.message || "Failed to delete conversation.";
+			}
+		}
+		isMenuOpen = false;
+	}
+
+	// Close menu on click outside
+	$effect(() => {
+		const handleClick = () => isMenuOpen = false;
+		if (isMenuOpen) {
+			window.addEventListener('click', handleClick);
+			return () => window.removeEventListener('click', handleClick);
+		}
+	});
+
 	function handleKeydown(e: KeyboardEvent) {
 		if (e.key === 'Enter' && !e.shiftKey) {
 			e.preventDefault();
@@ -200,24 +314,56 @@
 
 <div class="flex flex-col h-full">
 	<!-- Top Bar -->
-	<header class="h-14 glass-panel-strong flex items-center justify-between px-6 shrink-0">
+	<header class="h-14 glass-panel-strong flex items-center justify-between md:px-6 px-4 shrink-0 relative z-50">
 		<div class="flex items-center gap-3">
-			<button onclick={() => goto('/chat')} class="p-1.5 rounded-lg hover:bg-white/5 transition-colors cursor-pointer">
-				<ArrowLeft size={16} class="text-niva-text-secondary" />
+			<button onclick={() => goto('/chat')} class="p-1.5 rounded-lg hover:bg-white/5 text-niva-text-secondary transition-colors cursor-pointer">
+				<ArrowLeft size={16} />
 			</button>
 			<Sparkles size={18} class="text-niva-accent" />
-			<h1 class="text-sm font-semibold text-niva-text font-[Manrope] truncate max-w-xs">{title}</h1>
+			<h1 class="text-sm font-semibold text-niva-text font-[Manrope] truncate max-w-[150px] md:max-w-xs">{title}</h1>
 		</div>
-		<span class="text-[10px] font-medium px-2 py-1 rounded-full bg-niva-accent/10 text-niva-accent">
-			Niva AI
-		</span>
+		<div class="flex items-center gap-2">
+			<span class="hidden sm:inline-block text-[10px] font-medium px-2 py-1 rounded-full bg-niva-accent/10 text-niva-accent">
+				Niva AI
+			</span>
+			<div class="relative">
+				<button 
+					onclick={(e) => { e.stopPropagation(); isMenuOpen = !isMenuOpen; }}
+					class="p-1.5 rounded-lg hover:bg-white/5 text-niva-text-secondary transition-colors cursor-pointer"
+				>
+					<MoreVertical size={18} />
+				</button>
+				
+				{#if isMenuOpen}
+					<div class="absolute right-0 top-10 w-48 bg-niva-surface-2 border border-niva-glass-border rounded-xl shadow-2xl p-1 animate-in fade-in zoom-in duration-200">
+						<button onclick={handleShare} class="w-full flex items-center gap-2 px-3 py-2 text-xs text-niva-text hover:bg-white/5 rounded-lg transition-colors cursor-pointer text-left">
+							<Share2 size={14} class="text-niva-text-secondary" />
+							Share Chat
+						</button>
+						<button onclick={handleRename} class="w-full flex items-center gap-2 px-3 py-2 text-xs text-niva-text hover:bg-white/5 rounded-lg transition-colors cursor-pointer text-left">
+							<Edit2 size={14} class="text-niva-text-secondary" />
+							Rename Chat
+						</button>
+						<div class="h-px bg-niva-glass-border my-1"></div>
+						<button onclick={handleDelete} class="w-full flex items-center gap-2 px-3 py-2 text-xs text-niva-error hover:bg-niva-error-bg/30 rounded-lg transition-colors cursor-pointer text-left">
+							<Trash2 size={14} />
+							Delete Chat
+						</button>
+					</div>
+				{/if}
+			</div>
+		</div>
 	</header>
 
-	<!-- Messages -->
-	<div bind:this={messagesContainer} class="flex-1 overflow-y-auto niva-scrollbar px-4 md:px-8 py-6">
+	<div bind:this={messagesContainer} class="flex-1 overflow-y-auto niva-scrollbar px-3 md:px-8 py-6">
 		<div class="max-w-3xl mx-auto space-y-6">
 			{#each messages as msg}
-				<ChatMessage message={msg} />
+				<ChatMessage 
+					message={msg} 
+					onEdit={handleEdit}
+					onRetry={handleRetry}
+					onShare={handleShare}
+				/>
 			{/each}
 
 			{#if isSearching}
@@ -245,7 +391,7 @@
 	</div>
 
 	<!-- Input Area -->
-	<div class="border-t border-niva-glass-border p-4 md:px-8 pb-20 md:pb-4">
+	<div class="border-t border-niva-glass-border p-3 md:px-8 pb-20 md:pb-4">
 		<div class="max-w-3xl mx-auto space-y-3">
 			<div class="flex flex-wrap gap-2">
 				{#if imagePreview}
@@ -285,7 +431,7 @@
 				</div>
 			{/if}
 
-			<div class="flex items-end gap-3 glass-panel rounded-2xl p-3">
+			<div class="flex items-end gap-2 md:gap-3 glass-panel rounded-2xl md:p-3 p-2">
 				<input
 					type="file"
 					accept="image/*"
@@ -301,28 +447,31 @@
 					class="hidden"
 				/>
 				
-				<div class="flex gap-1 shrink-0">
+				<div class="flex gap-0.5 md:gap-1 shrink-0">
 					<button
 						onclick={handleImageClick}
-						class="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-white/5 transition-all duration-200 cursor-pointer text-niva-text-secondary hover:text-niva-accent"
+						class="w-8 h-8 md:w-9 md:h-9 rounded-xl flex items-center justify-center hover:bg-white/5 transition-all duration-200 cursor-pointer text-niva-text-secondary hover:text-niva-accent"
 						title="Upload Image"
 					>
-						<ImagePlus size={20} />
+						<ImagePlus size={18} class="md:hidden" />
+						<ImagePlus size={20} class="hidden md:block" />
 					</button>
 					<button
 						onclick={handleDocClick}
-						class="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-white/5 transition-all duration-200 cursor-pointer text-niva-text-secondary hover:text-niva-accent"
+						class="w-8 h-8 md:w-9 md:h-9 rounded-xl flex items-center justify-center hover:bg-white/5 transition-all duration-200 cursor-pointer text-niva-text-secondary hover:text-niva-accent"
 						title="Upload PDF"
 					>
-						<FileText size={20} />
+						<FileText size={18} class="md:hidden" />
+						<FileText size={20} class="hidden md:block" />
 					</button>
 					<button
 						onclick={() => isSearchEnabled = !isSearchEnabled}
-						class="w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-200 cursor-pointer
+						class="w-8 h-8 md:w-9 md:h-9 rounded-xl flex items-center justify-center transition-all duration-200 cursor-pointer
 							{isSearchEnabled ? 'text-niva-accent bg-niva-accent/10' : 'text-niva-text-secondary hover:text-niva-accent hover:bg-white/5'}"
 						title="Web Search"
 					>
-						<Globe size={20} />
+						<Globe size={18} class="md:hidden" />
+						<Globe size={20} class="hidden md:block" />
 					</button>
 				</div>
 
@@ -332,12 +481,12 @@
 					onkeydown={handleKeydown}
 					placeholder="Message Niva..."
 					rows="1"
-					class="flex-1 bg-transparent border-none outline-none text-sm text-niva-text placeholder:text-niva-text-secondary resize-none max-h-32 niva-scrollbar overflow-y-auto"
+					class="flex-1 bg-transparent border-none outline-none text-[13px] md:text-sm text-niva-text placeholder:text-niva-text-secondary resize-none max-h-24 md:max-h-32 niva-scrollbar overflow-y-auto py-1.5"
 				></textarea>
 				<button
 					onclick={handleSend}
 					disabled={(!inputValue.trim() && !selectedImage && !selectedDoc) || isLoading}
-					class="w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-200 cursor-pointer shrink-0
+					class="w-8 h-8 md:w-9 md:h-9 rounded-xl flex items-center justify-center transition-all duration-200 cursor-pointer shrink-0
 						{(inputValue.trim() || selectedImage || selectedDoc) && !isLoading
 							? 'bg-niva-accent text-niva-bg hover:opacity-90'
 							: 'bg-white/5 text-niva-text-secondary'}"
