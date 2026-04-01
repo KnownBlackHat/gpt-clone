@@ -1,10 +1,15 @@
+import { Router } from 'express';
+import Groq from 'groq-sdk';
 import path from 'path';
 import { createRequire } from 'module';
+import { authMiddleware } from '../middleware/auth.js';
+import dotenv from 'dotenv';
+
+dotenv.config();
+
 const require = createRequire(import.meta.url);
 const pdfModule = require('pdf-parse');
 const PDFParse = pdfModule.PDFParse || pdfModule.default?.PDFParse;
-
-dotenv.config();
 
 const router = Router();
 router.use(authMiddleware);
