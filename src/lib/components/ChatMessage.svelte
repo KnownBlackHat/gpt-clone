@@ -267,6 +267,18 @@
 			</div>
 		{/if}
 
+		{#if !isAssistant && !isEditing}
+			<div class="mt-1 flex items-center justify-end gap-1 md:opacity-0 group-hover:opacity-100 transition-opacity w-full pr-1">
+				<button
+					onclick={startEditing}
+					class="p-1.5 rounded-lg hover:bg-white/5 text-niva-text-secondary hover:text-niva-accent transition-all duration-200 cursor-pointer flex items-center justify-center group/btn"
+					title="Edit message"
+				>
+					<Edit2 size={13} class="opacity-50 group-hover/btn:opacity-100 transition-opacity pointer-events-none" />
+				</button>
+			</div>
+		{/if}
+
 		{#if message.pdf_text && hasEnoughContext}
 			<div class="mt-3 p-3 rounded-2xl glass-panel border border-niva-accent/20 flex items-center justify-between group/pdf niva-glow-sm">
 				<div class="flex items-center gap-3">
