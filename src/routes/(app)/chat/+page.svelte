@@ -23,6 +23,7 @@
 		Archive,
 		ArchiveRestore,
 		LayoutList,
+		FolderOpen,
 	} from '@lucide/svelte';
 	import ChatMessage from '$lib/components/ChatMessage.svelte';
 	import { copyToClipboard } from '$lib/utils';
@@ -39,6 +40,20 @@
 	let textareaElement = $state<HTMLTextAreaElement | null>(null);
 	let activeMenuId = $state<string | null>(null);
 	let isArchiveView = $state(false);
+
+	let groupedConversations = $derived(() => {
+		const groups: Record<string, Conversation[]> = {};
+		for (const c of conversations) {
+			const cat = c.category || 'General';
+			if (!groups[cat]) groups[cat] = [];
+			groups[cat].push(c);
+		}
+		return Object.entries(groups).sort(([a], [b]) => {
+			if (a === 'General') return -1;
+			if (b === 'General') return 1;
+			return a.localeCompare(b);
+		});
+	});
 
 	// Group creation
 	let showGroupDialog = $state(false);
@@ -370,6 +385,30 @@
 		}
 	}
 
+	async function handleMoveToProject(id: string) {
+		const conv = conversations.find((c) => c.id === id);
+		if (!conv) return;
+		
+		const currentCategory = conv.category && conv.category !== 'General' ? conv.category : '';
+		const newCategory = await ui.prompt('Enter project/category name (leave empty for General):', 'Move to Project', currentCategory);
+		
+		if (newCategory !== null) {
+			const finalCategory = newCategory.trim() || 'General';
+			if (finalCategory !== (conv.category || 'General')) {
+				try {
+					await api.conversations.updateCategory(id, finalCategory);
+					conversations = conversations.map((c) =>
+						c.id === id ? { ...c, category: finalCategory } : c
+					);
+					ui.toast('Moved to project successfully', 'success');
+				} catch (err: any) {
+					ui.toast(err.message || 'Failed to move conversation.', 'error');
+				}
+			}
+		}
+		activeMenuId = null;
+	}
+
 	async function handleSidebarShare(id: string) {
 		try {
 			const { shareId } = await api.conversations.share(id);
@@ -522,8 +561,12 @@
 			{#if conversations.length === 0}
 				<p class="text-xs text-niva-text-secondary p-3 text-center">No conversations yet</p>
 			{:else}
-				{#each conversations as conv (conv.id)}
-					<div class="relative group/item {activeMenuId === conv.id ? 'z-[200]' : 'z-10'} rounded-xl transition-all duration-200
+				{#each groupedConversations() as [category, convs]}
+					<div class="px-3 pt-4 pb-1">
+						<h3 class="text-[10px] font-bold text-niva-text-secondary uppercase tracking-widest">{category}</h3>
+					</div>
+					{#each convs as conv (conv.id)}
+						<div class="relative group/item {activeMenuId === conv.id ? 'z-[200]' : 'z-10'} rounded-xl transition-all duration-200
 						{activeConversationId === conv.id ? 'bg-niva-accent/10 border border-niva-accent/20' : 'hover:bg-white/5 border border-transparent'}">
 						
 						<!-- Main Selection Button -->
@@ -569,6 +612,10 @@
 									<Edit2 size={14} class="text-niva-text-secondary" />
 									Rename Chat
 								</button>
+								<button onclick={() => handleMoveToProject(conv.id)} class="w-full flex items-center gap-2 px-3 py-2 text-xs text-niva-text hover:bg-white/5 rounded-lg transition-colors cursor-pointer text-left">
+									<FolderOpen size={14} class="text-niva-text-secondary" />
+									Move to Project
+								</button>
 								<button onclick={() => handleArchive(conv.id)} class="w-full flex items-center gap-2 px-3 py-2 text-xs text-niva-text hover:bg-white/5 rounded-lg transition-colors cursor-pointer text-left">
 									{#if conv.is_archived}
 										<ArchiveRestore size={14} class="text-niva-text-secondary" />
@@ -586,6 +633,7 @@
 							</div>
 						{/if}
 					</div>
+					{/each}
 				{/each}
 			{/if}
 		</div>

@@ -18,6 +18,7 @@
 		Trash2,
 		Users,
 		LayoutList,
+		FolderOpen,
 	} from '@lucide/svelte';
 
 	import ChatMessage from '$lib/components/ChatMessage.svelte';
@@ -364,6 +365,22 @@
 		isMenuOpen = false;
 	}
 
+	async function handleMoveToProject() {
+		if (!conversationId) return;
+		// Prompt for project name. We don't have current category in this view, so start blank.
+		const newCategory = await ui.prompt('Enter project/category name (leave empty for General):', 'Move to Project', '');
+		if (newCategory !== null) {
+			const finalCategory = newCategory.trim() || 'General';
+			try {
+				await api.conversations.updateCategory(conversationId, finalCategory);
+				ui.toast('Moved to project successfully', 'success');
+			} catch (err: any) {
+				ui.toast(err.message || "Failed to move conversation.", 'error');
+			}
+		}
+		isMenuOpen = false;
+	}
+
 	async function handleDelete() {
 		if (!conversationId) return;
 		if (await ui.confirm('Are you sure you want to delete this conversation?', 'Delete Chat', 'Delete', 'Keep')) {
@@ -448,6 +465,10 @@
 						<button onclick={handleRename} class="w-full flex items-center gap-2 px-3 py-2 text-xs text-niva-text hover:bg-white/5 rounded-lg transition-colors cursor-pointer text-left">
 							<Edit2 size={14} class="text-niva-text-secondary" />
 							Rename Chat
+						</button>
+						<button onclick={handleMoveToProject} class="w-full flex items-center gap-2 px-3 py-2 text-xs text-niva-text hover:bg-white/5 rounded-lg transition-colors cursor-pointer text-left">
+							<FolderOpen size={14} class="text-niva-text-secondary" />
+							Move to Project
 						</button>
 						<div class="h-px bg-niva-glass-border my-1"></div>
 						<button onclick={handleDelete} class="w-full flex items-center gap-2 px-3 py-2 text-xs text-niva-error hover:bg-niva-error-bg/30 rounded-lg transition-colors cursor-pointer text-left">

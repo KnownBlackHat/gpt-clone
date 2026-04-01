@@ -188,13 +188,13 @@
 			<span class="text-[10px] font-bold text-niva-accent/70 uppercase tracking-widest mb-1 px-1">{message.username}</span>
 		{/if}
 		<div
-			class="md:px-5 px-4 md:py-3.5 py-3 rounded-2xl md:text-sm text-[13px] leading-relaxed transition-all duration-300
+			class="md:px-5 px-4 md:py-3.5 py-3 rounded-2xl md:text-sm text-[13px] leading-relaxed transition-all duration-300 overflow-x-auto min-w-0 max-w-full
 				{message.role === 'user'
 					? 'bg-niva-accent text-niva-bg font-medium rounded-tr-none niva-glow-sm'
 					: 'glass-panel text-niva-text rounded-tl-none border border-white/5'}"
 		>
 			{#if message.role === 'assistant'}
-				<div class="markdown-content" use:setupCodeBlocks={message.content}>
+				<div class="markdown-content min-w-0 max-w-full" use:setupCodeBlocks={message.content}>
 					{@html renderMarkdown(message.content)}
 				</div>
 			{:else}
@@ -305,6 +305,21 @@
 	:global(.markdown-content) {
 		word-break: break-word;
 		color: var(--niva-text);
+		max-width: 100%;
+		overflow-x: hidden;
+	}
+	
+	:global(.markdown-content table) {
+		display: block;
+		overflow-x: auto;
+		max-width: 100%;
+		border-collapse: collapse;
+		margin: 1rem 0;
+	}
+	
+	:global(.markdown-content th, .markdown-content td) {
+		border: 1px solid rgba(255, 255, 255, 0.1);
+		padding: 0.5rem 0.75rem;
 	}
 	
 	:global(.markdown-content p) {
@@ -356,6 +371,7 @@
 		padding: 1.25rem;
 		margin: 1.5rem 0;
 		overflow-x: auto;
+		max-width: 100%;
 		box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
 	}
 	

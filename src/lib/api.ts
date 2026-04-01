@@ -99,6 +99,15 @@ export const api = {
                 method: 'PUT',
                 body: { title },
             }),
+
+        /**
+         * Move a conversation to a specific folder/project.
+         */
+        updateCategory: (id: string, category: string) =>
+            request<{ conversation: any }>(`/conversations/${id}`, {
+                method: 'PUT',
+                body: { category },
+            }),
     },
 
     messages: {

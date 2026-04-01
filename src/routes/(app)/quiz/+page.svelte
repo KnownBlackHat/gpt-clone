@@ -597,7 +597,7 @@
 								<h3 class="text-xs font-bold text-niva-text-secondary uppercase tracking-widest">Recent Quizzes</h3>
 								<button onclick={() => { quizHistory = []; }} class="text-[10px] text-niva-error/70 hover:text-niva-error cursor-pointer font-medium">Clear</button>
 							</div>
-							<div class="space-y-2 max-h-48 overflow-y-auto niva-scrollbar">
+							<div class="space-y-2 max-h-72 md:max-h-96 overflow-y-auto niva-scrollbar">
 								{#each quizHistory as result}
 									{@const pct = Math.round((result.score / result.total_questions) * 100)}
 									<button 

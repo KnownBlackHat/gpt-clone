@@ -104,17 +104,21 @@ router.delete('/:id', async (req, res) => {
 // PUT /api/conversations/:id
 router.put('/:id', async (req, res) => {
     try {
-        const { title } = req.body;
+        const { title, category } = req.body;
         const result = await pool.query(
-            'UPDATE conversations SET title = $1, updated_at = NOW() WHERE id = $2 AND user_id = $3 RETURNING *',
-            [title, req.params.id, req.user.userId]
+            `UPDATE conversations 
+             SET title = COALESCE($1, title), 
+                 category = COALESCE($2, category), 
+                 updated_at = NOW() 
+             WHERE id = $3 AND user_id = $4 RETURNING *`,
+            [title, category, req.params.id, req.user.userId]
         );
         if (result.rows.length === 0) {
             return res.status(404).json({ error: 'Conversation not found' });
         }
         res.json({ conversation: result.rows[0] });
     } catch (err) {
-        console.error('Rename conversation error:', err);
+        console.error('Update conversation error:', err);
         res.status(500).json({ error: 'Internal server error' });
     }
 });
