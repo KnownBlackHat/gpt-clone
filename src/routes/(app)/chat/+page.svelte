@@ -361,11 +361,6 @@
 		}
 		activeMenuId = null;
 	}
-
-	$effect(() => {
-		loadConversations();
-	});
-
 	// Close menu on click outside
 	$effect(() => {
 		const handleClick = () => activeMenuId = null;
@@ -469,7 +464,7 @@
 				<p class="text-xs text-niva-text-secondary p-3 text-center">No conversations yet</p>
 			{:else}
 				{#each conversations as conv}
-					<div class="relative group/item">
+					<div class="relative group/item {activeMenuId === conv.id ? 'z-50' : 'z-10'}">
 						<button
 							onclick={() => selectConversation(conv)}
 							class="w-full text-left p-3 rounded-xl transition-all duration-200 cursor-pointer group
@@ -486,7 +481,8 @@
 						
 						<button
 							onclick={(e) => toggleMenu(e, conv.id)}
-							class="absolute top-3 right-2 p-1 rounded-lg hover:bg-white/10 text-niva-text-secondary opacity-0 group-hover/item:opacity-100 transition-opacity cursor-pointer"
+							class="absolute top-3.5 right-2 px-1.5 py-1.5 rounded-lg hover:bg-white/10 text-niva-text-secondary transition-all cursor-pointer z-30
+								{activeMenuId === conv.id ? 'opacity-100 bg-white/10' : 'opacity-0 group-hover/item:opacity-100'}"
 						>
 							<MoreVertical size={14} />
 						</button>
