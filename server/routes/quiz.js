@@ -3,6 +3,7 @@ import Groq from 'groq-sdk';
 import path from 'path';
 import { createRequire } from 'module';
 import { authMiddleware } from '../middleware/auth.js';
+import pool from '../db/index.js';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -161,7 +162,7 @@ router.post('/save', async (req, res) => {
         res.status(201).json({ quiz: result.rows[0] });
     } catch (err) {
         console.error('Save quiz error:', err);
-        res.status(500).json({ error: 'Failed to save quiz' });
+        res.status(500).json({ error: err.message || 'Failed to save quiz' });
     }
 });
 
