@@ -421,6 +421,10 @@
 							<Share2 size={14} class="text-niva-text-secondary" />
 							Share Chat
 						</button>
+						<button onclick={handleGenerateQuiz} class="w-full flex items-center gap-2 px-3 py-2 text-xs text-niva-accent hover:bg-niva-accent/10 rounded-lg transition-colors cursor-pointer text-left font-bold">
+							<LayoutList size={14} />
+							Generate Quiz
+						</button>
 						<button onclick={handleRename} class="w-full flex items-center gap-2 px-3 py-2 text-xs text-niva-text hover:bg-white/5 rounded-lg transition-colors cursor-pointer text-left">
 							<Edit2 size={14} class="text-niva-text-secondary" />
 							Rename Chat

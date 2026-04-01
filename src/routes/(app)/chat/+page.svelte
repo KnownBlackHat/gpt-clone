@@ -389,6 +389,52 @@
 			isCreatingGroup = false;
 		}
 	}
+
+	function handleGenerateQuiz() {
+		if (!activeConversationId && messages.length === 0) return;
+		
+		// Capture context from current messages
+		const context = messages.map(m => {
+			if (m.pdf_text) return `[PDF CONTENT]:\n${m.pdf_text}`;
+			return m.content;
+		}).join('\n\n').slice(-12000);
+
+		if (context) {
+			sessionStorage.setItem('niva_quiz_context', context);
+			goto('/quiz?from_chat=true');
+		} else {
+			alert("Not enough conversation context to generate a quiz.");
+		}
+	}
+
+	async function handleSidebarGenerateQuiz(id: string) {
+		try {
+			activeMenuId = null;
+			// If it's already the active one, we have the messages. 
+			// If not, we might need to fetch them or just notify user to open it first.
+			// To be robust, let's just fetch them if not active.
+			let contextMessages = messages;
+			if (activeConversationId !== id) {
+				const data = await api.messages.list(id);
+				contextMessages = data.messages;
+			}
+
+			const context = contextMessages.map(m => {
+				if (m.pdf_text) return `[PDF CONTENT]:\n${m.pdf_text}`;
+				return m.content;
+			}).join('\n\n').slice(-12000);
+
+			if (context) {
+				sessionStorage.setItem('niva_quiz_context', context);
+				goto('/quiz?from_chat=true');
+			} else {
+				alert("This conversation has no messages yet.");
+			}
+		} catch (err) {
+			console.error("Failed to generate quiz from sidebar:", err);
+			alert("Failed to capture conversation context.");
+		}
+	}
 </script>
 
 <div class="flex h-full">
@@ -450,6 +496,10 @@
 								<button onclick={() => handleSidebarShare(conv.id)} class="w-full flex items-center gap-2 px-3 py-2 text-xs text-niva-text hover:bg-white/5 rounded-lg transition-colors cursor-pointer text-left">
 									<Share2 size={14} class="text-niva-text-secondary" />
 									Share View
+								</button>
+								<button onclick={() => handleSidebarGenerateQuiz(conv.id)} class="w-full flex items-center gap-2 px-3 py-2 text-xs text-niva-accent hover:bg-niva-accent/10 rounded-lg transition-colors cursor-pointer text-left font-bold">
+									<LayoutList size={14} />
+									Generate Quiz
 								</button>
 								<button onclick={() => handleInviteLink(conv.id)} class="w-full flex items-center gap-2 px-3 py-2 text-xs text-niva-text hover:bg-white/5 rounded-lg transition-colors cursor-pointer text-left">
 									<UserPlus size={14} class="text-niva-text-secondary" />
@@ -534,7 +584,10 @@
 				<!-- Message List -->
 				<div class="max-w-3xl mx-auto space-y-6">
 					{#each messages as msg}
-						<ChatMessage message={msg} />
+						<ChatMessage 
+							message={msg} 
+							onGenerateQuiz={handleGenerateQuiz}
+						/>
 					{/each}
 
 					{#if isSearching}
