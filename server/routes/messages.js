@@ -237,7 +237,7 @@ INSTRUCTIONS:
         );
 
         // Update conversation title if needed
-        if (conv.rows[0].title === 'New Chat') {
+        if (conversation.title === 'New Chat') {
             await pool.query(
                 'UPDATE conversations SET title = $1, updated_at = NOW() WHERE id = $2',
                 [generateTitle(content || 'Analysis'), req.params.conversationId]
