@@ -19,6 +19,8 @@ CREATE TABLE conversations (
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     title VARCHAR(255) DEFAULT 'New Chat',
     category VARCHAR(50) DEFAULT 'General',
+    share_id UUID DEFAULT NULL,
+    is_group BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );

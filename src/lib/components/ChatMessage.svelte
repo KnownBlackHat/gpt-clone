@@ -198,16 +198,6 @@
 					</div>
 				{:else}
 					<div class="whitespace-pre-wrap">{message.content}</div>
-					<div class="mt-2 flex items-center justify-end md:opacity-0 group-hover:opacity-100 transition-opacity border-t border-black/5 pt-1.5">
-						<button
-							onclick={startEditing}
-							class="p-1.5 rounded-lg hover:bg-black/5 text-niva-bg/60 hover:text-niva-bg transition-all duration-200 cursor-pointer flex items-center gap-1.5"
-							title="Edit message"
-						>
-							<Edit2 size={13} />
-							<span class="text-[10px] font-medium">Edit</span>
-						</button>
-					</div>
 				{/if}
 			{/if}
 		</div>

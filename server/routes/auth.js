@@ -46,10 +46,10 @@ router.post('/signup', async (req, res) => {
             { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
         );
 
-        // secure cookie config - ltr we might need more granular control for dev/prod
+        // cookie config - only enforce secure flag when explicitly set
         res.cookie('token', token, {
             httpOnly: true,
-            secure: process.env.COOKIE_SECURE === 'true' || (process.env.NODE_ENV === 'production' && process.env.COOKIE_SECURE !== 'false'),
+            secure: process.env.COOKIE_SECURE === 'true',
             sameSite: 'lax',
             maxAge: 7 * 24 * 60 * 60 * 1000,
         });
@@ -101,7 +101,7 @@ router.post('/login', async (req, res) => {
 
         res.cookie('token', token, {
             httpOnly: true,
-            secure: process.env.COOKIE_SECURE === 'true' || (process.env.NODE_ENV === 'production' && process.env.COOKIE_SECURE !== 'false'),
+            secure: process.env.COOKIE_SECURE === 'true',
             sameSite: 'lax',
             maxAge: 7 * 24 * 60 * 60 * 1000,
         });
