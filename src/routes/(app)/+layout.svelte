@@ -10,6 +10,7 @@
 		LogOut,
 		Sparkles,
 		LayoutList,
+		FolderOpen,
 	} from '@lucide/svelte';
 	import NivaAlert from '$lib/components/NivaAlert.svelte';
 
@@ -18,6 +19,7 @@
 
 	const navItems = [
 		{ icon: MessageCircle, label: 'Recent', href: '/chat' },
+		{ icon: FolderOpen, label: 'Projects', href: '/projects' },
 		{ icon: LayoutList, label: 'Quiz', href: '/quiz' },
 		{ icon: Settings, label: 'Settings', href: '/settings' },
 	];

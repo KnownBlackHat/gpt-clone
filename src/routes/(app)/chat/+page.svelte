@@ -41,20 +41,6 @@
 	let activeMenuId = $state<string | null>(null);
 	let isArchiveView = $state(false);
 
-	let groupedConversations = $derived(() => {
-		const groups: Record<string, Conversation[]> = {};
-		for (const c of conversations) {
-			const cat = c.category || 'General';
-			if (!groups[cat]) groups[cat] = [];
-			groups[cat].push(c);
-		}
-		return Object.entries(groups).sort(([a], [b]) => {
-			if (a === 'General') return -1;
-			if (b === 'General') return 1;
-			return a.localeCompare(b);
-		});
-	});
-
 	// Group creation
 	let showGroupDialog = $state(false);
 	let groupTitle = $state('');
@@ -561,12 +547,8 @@
 			{#if conversations.length === 0}
 				<p class="text-xs text-niva-text-secondary p-3 text-center">No conversations yet</p>
 			{:else}
-				{#each groupedConversations() as [category, convs]}
-					<div class="px-3 pt-4 pb-1">
-						<h3 class="text-[10px] font-bold text-niva-text-secondary uppercase tracking-widest">{category}</h3>
-					</div>
-					{#each convs as conv (conv.id)}
-						<div class="relative group/item {activeMenuId === conv.id ? 'z-[200]' : 'z-10'} rounded-xl transition-all duration-200
+				{#each conversations as conv (conv.id)}
+					<div class="relative group/item {activeMenuId === conv.id ? 'z-[200]' : 'z-10'} rounded-xl transition-all duration-200
 						{activeConversationId === conv.id ? 'bg-niva-accent/10 border border-niva-accent/20' : 'hover:bg-white/5 border border-transparent'}">
 						
 						<!-- Main Selection Button -->
@@ -633,7 +615,6 @@
 							</div>
 						{/if}
 					</div>
-					{/each}
 				{/each}
 			{/if}
 		</div>
