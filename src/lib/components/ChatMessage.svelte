@@ -83,25 +83,13 @@
 		try {
 			// First, handle <calculation> tags
 			let processed = content.replace(/<calculation>([\s\S]*?)<\/calculation>/g, (match, calculation) => {
-				return `
-					<details class="niva-calculation-dropdown">
-						<summary>
-							<span class="flex items-center gap-2">
-								<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-niva-accent"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><line x1="8" x2="16" y1="12" y2="12"/><line x1="12" x2="12" y1="8" y2="16"/></svg>
-								Show Calculations
-							</span>
-						</summary>
-						<div class="calculation-content">
-							${marked.parse(calculation.trim())}
-						</div>
-					</details>
-				`;
+				return `<details class="niva-calculation-dropdown"><summary><span class="flex items-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-niva-accent"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><line x1="8" x2="16" y1="12" y2="12"/><line x1="12" x2="12" y1="8" y2="16"/></svg>Show Calculations</span></summary><div class="calculation-content">${marked.parse(calculation.trim())}</div></details>`;
 			});
 
 			const rawHtml = marked.parse(processed) as string;
 			return DOMPurify.sanitize(rawHtml, {
-				ADD_TAGS: ['details', 'summary'],
-				ADD_ATTR: ['class']
+				ADD_TAGS: ['details', 'summary', 'svg', 'rect', 'line', 'polyline', 'path', 'span', 'div'],
+				ADD_ATTR: ['class', 'width', 'height', 'viewBox', 'fill', 'stroke', 'stroke-width', 'stroke-linecap', 'stroke-linejoin', 'x', 'y', 'x1', 'y1', 'x2', 'y2', 'rx', 'ry', 'points', 'd', 'xmlns']
 			});
 		} catch (e) {
 			console.error('Markdown rendering error:', e);
@@ -188,6 +176,9 @@
 
 	<!-- Content -->
 	<div class="flex flex-col md:max-w-[85%] max-w-[92%] {message.role === 'user' ? 'items-end' : 'items-start'}">
+		{#if message.role === 'user' && message.username}
+			<span class="text-[10px] font-bold text-niva-accent/70 uppercase tracking-widest mb-1 px-1">{message.username}</span>
+		{/if}
 		<div
 			class="md:px-5 px-4 md:py-3.5 py-3 rounded-2xl md:text-sm text-[13px] leading-relaxed transition-all duration-300
 				{message.role === 'user'

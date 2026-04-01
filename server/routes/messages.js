@@ -72,17 +72,28 @@ async function parsePdf(base64Data) {
 // GET /api/conversations/:conversationId/messages
 router.get('/:conversationId/messages', async (req, res) => {
     try {
-        const conv = await pool.query(
-            'SELECT id FROM conversations WHERE id = $1 AND user_id = $2',
-            [req.params.conversationId, req.user.userId]
+        const userId = req.user.userId;
+        const conversationId = req.params.conversationId;
+
+        // Verify access: owner OR member
+        const access = await pool.query(
+            `SELECT 1 FROM conversations WHERE id = $1 AND (user_id = $2 OR id IN (
+                SELECT conversation_id FROM conversation_members WHERE user_id = $2
+            ))`,
+            [conversationId, userId]
         );
-        if (conv.rows.length === 0) {
-            return res.status(404).json({ error: 'Conversation not found' });
+
+        if (access.rows.length === 0) {
+            return res.status(404).json({ error: 'Conversation not found or access denied' });
         }
 
         const result = await pool.query(
-            'SELECT id, role, content, image_url, created_at FROM messages WHERE conversation_id = $1 ORDER BY created_at ASC',
-            [req.params.conversationId]
+            `SELECT m.id, m.role, m.content, m.image_url, m.created_at, u.username 
+             FROM messages m
+             LEFT JOIN users u ON u.id = m.user_id
+             WHERE m.conversation_id = $1 
+             ORDER BY m.created_at ASC`,
+            [conversationId]
         );
         res.json({ messages: result.rows });
     } catch (err) {
@@ -101,21 +112,33 @@ router.post('/:conversationId/messages', async (req, res) => {
             return res.status(400).json({ error: 'Message content, image, or PDF is required' });
         }
 
-        // 1. Verify ownership and fetch user memory
-        const userRes = await pool.query('SELECT memory FROM users WHERE id = $1', [userId]);
+        // 1. Verify access (owner OR member)
+        const userRes = await pool.query('SELECT username, memory FROM users WHERE id = $1', [userId]);
+        const userName = userRes.rows[0]?.username || 'User';
         const userMemory = userRes.rows[0]?.memory || '';
 
-        const conv = await pool.query(
-            'SELECT id, title FROM conversations WHERE id = $1 AND user_id = $2',
-            [req.params.conversationId, req.user.userId]
+        const access = await pool.query(
+            `SELECT id, title, is_group, user_id as owner_id
+             FROM conversations 
+             WHERE id = $1 AND (user_id = $2 OR id IN (
+                 SELECT conversation_id FROM conversation_members WHERE user_id = $2
+             ))`,
+            [req.params.conversationId, userId]
         );
-        if (conv.rows.length === 0) {
-            return res.status(404).json({ error: 'Conversation not found' });
-        }
 
-        // 2. Fetch recent short-term history (last 10 messages)
+        if (access.rows.length === 0) {
+            return res.status(404).json({ error: 'Conversation not found or access denied' });
+        }
+        const conversation = access.rows[0];
+        const isGroup = conversation.is_group;
+
+        // 2. Fetch recent short-term history (last 10 messages) with usernames
         const historyRes = await pool.query(
-            'SELECT role, content FROM messages WHERE conversation_id = $1 ORDER BY created_at DESC LIMIT 10',
+            `SELECT m.role, m.content, u.username 
+             FROM messages m
+             LEFT JOIN users u ON u.id = m.user_id
+             WHERE m.conversation_id = $1 
+             ORDER BY m.created_at DESC LIMIT 10`,
             [req.params.conversationId]
         );
         const history = historyRes.rows.reverse();
@@ -150,6 +173,10 @@ router.post('/:conversationId/messages', async (req, res) => {
 - **Sourcing**: Use inline citations like \`[1](url)\` if you use search results. Provide a \`### References\` list at the end.
 - Never mention your origin as an OpenAI or Groq model.
 
+### GROUP CONTEXT
+${isGroup ? 'This is a GROUP CHAT with multiple participants. Address users by their names when appropriate.' : 'This is a private 1-on-1 chat.'}
+Current speaker: ${userName}
+
 LONG-TERM MEMORY: ${userMemory || 'No personal details known yet.'}
 
 INSTRUCTIONS: 
@@ -166,7 +193,8 @@ INSTRUCTIONS:
         // Add history
         history.forEach(msg => {
             const content = typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content);
-            modelMessages.push({ role: msg.role, content });
+            const prefix = (isGroup && msg.role === 'user' && msg.username) ? `[${msg.username}]: ` : '';
+            modelMessages.push({ role: msg.role, content: prefix + content });
         });
 
         // Add additional context (PDF/Search)
@@ -198,14 +226,14 @@ INSTRUCTIONS:
         } else {
             modelMessages.push({
                 role: 'user',
-                content: content || (pdfData ? 'Summarize the PDF provided.' : ''),
+                content: (isGroup ? `[${userName}]: ` : '') + (content || (pdfData ? 'Summarize the PDF provided.' : '')),
             });
         }
 
         // 5. Save User Message in DB
         const userMsg = await pool.query(
-            'INSERT INTO messages (conversation_id, role, content, image_url) VALUES ($1, $2, $3, $4) RETURNING id, role, content, image_url, created_at',
-            [req.params.conversationId, 'user', content || (pdfData ? 'Uploaded a PDF' : 'Sent an image'), imageUrl || null]
+            'INSERT INTO messages (conversation_id, role, content, image_url, user_id) VALUES ($1, $2, $3, $4, $5) RETURNING id, role, content, image_url, created_at',
+            [req.params.conversationId, 'user', content || (pdfData ? 'Uploaded a PDF' : 'Sent an image'), imageUrl || null, userId]
         );
 
         // Update conversation title if needed

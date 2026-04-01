@@ -78,9 +78,11 @@
 
 			// Check ownership for group controls
 			try {
-				const userData = await api.auth.me();
-				isConvOwner = true; // If we own this conversation, we loaded it
-			} catch { /* ignore */ }
+				const { user } = await api.auth.me();
+				isConvOwner = convData.conversation.user_id === user.id;
+			} catch { 
+				isConvOwner = false;
+			}
 
 			scrollToBottom();
 		} catch {
@@ -392,7 +394,7 @@
 		</div>
 		<div class="flex items-center gap-2">
 			<span class="hidden sm:inline-block text-[10px] font-medium px-2 py-1 rounded-full bg-niva-accent/10 text-niva-accent">
-				Niva AI
+				{#if isGroupConv}Group Session{:else}Niva AI{/if}
 			</span>
 			<button
 				onclick={() => isGroupVisible = !isGroupVisible}

@@ -287,6 +287,7 @@ export interface Message {
     role: 'user' | 'assistant' | 'system';
     content: string;
     image_url?: string;
+    username?: string;
     created_at: string;
 }
 
