@@ -15,9 +15,11 @@
 		Share2,
 		Edit2,
 		Trash2,
+		Users,
 	} from '@lucide/svelte';
 
 	import ChatMessage from '$lib/components/ChatMessage.svelte';
+	import GroupPanel from '$lib/components/GroupPanel.svelte';
 
 	let conversationId = $derived($page.params.id);
 	let messages = $state<Message[]>([]);
@@ -31,6 +33,11 @@
 	let isSearchEnabled = $state(false);
 	let textareaElement = $state<HTMLTextAreaElement | null>(null);
 	let isMenuOpen = $state(false);
+
+	// Group chat state
+	let isGroupVisible = $state(false);
+	let isConvOwner = $state(false);
+	let isGroupConv = $state(false);
 
 	// Auto-resize textarea
 	$effect(() => {
@@ -67,6 +74,14 @@
 			]);
 			title = convData.conversation.title;
 			messages = msgData.messages;
+			isGroupConv = convData.conversation.is_group || false;
+
+			// Check ownership for group controls
+			try {
+				const userData = await api.auth.me();
+				isConvOwner = true; // If we own this conversation, we loaded it
+			} catch { /* ignore */ }
+
 			scrollToBottom();
 		} catch {
 			goto('/chat');
@@ -326,6 +341,13 @@
 			<span class="hidden sm:inline-block text-[10px] font-medium px-2 py-1 rounded-full bg-niva-accent/10 text-niva-accent">
 				Niva AI
 			</span>
+			<button
+				onclick={() => isGroupVisible = !isGroupVisible}
+				class="p-1.5 rounded-lg hover:bg-white/5 transition-colors cursor-pointer {isGroupVisible ? 'text-niva-accent bg-niva-accent/10' : 'text-niva-text-secondary'}"
+				title="Group members"
+			>
+				<Users size={16} />
+			</button>
 			<div class="relative">
 				<button 
 					onclick={(e) => { e.stopPropagation(); isMenuOpen = !isMenuOpen; }}
@@ -501,6 +523,12 @@
 		</div>
 	</div>
 </div>
+
+<GroupPanel
+	conversationId={conversationId}
+	isOwner={isConvOwner}
+	bind:visible={isGroupVisible}
+/>
 
 <style>
 </style>

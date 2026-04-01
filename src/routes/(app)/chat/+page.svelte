@@ -17,6 +17,8 @@
 		Share2,
 		Edit2,
 		Trash2,
+		Users,
+		UserPlus,
 	} from '@lucide/svelte';
 	import ChatMessage from '$lib/components/ChatMessage.svelte';
 
@@ -31,6 +33,12 @@
 	let messagesContainer: HTMLElement;
 	let textareaElement = $state<HTMLTextAreaElement | null>(null);
 	let activeMenuId = $state<string | null>(null);
+
+	// Group creation
+	let showGroupDialog = $state(false);
+	let groupTitle = $state('');
+	let groupEmails = $state('');
+	let isCreatingGroup = $state(false);
 
 	// Auto-resize textarea
 	$effect(() => {
@@ -277,13 +285,39 @@
 		window.addEventListener('click', handleClick);
 		return () => window.removeEventListener('click', handleClick);
 	});
+
+	async function handleCreateGroup() {
+		if (!groupTitle.trim()) return;
+		isCreatingGroup = true;
+		try {
+			const emails = groupEmails.split(',').map(e => e.trim()).filter(Boolean);
+			const { conversation } = await api.groupChat.createGroup(groupTitle, emails);
+			showGroupDialog = false;
+			groupTitle = '';
+			groupEmails = '';
+			goto(`/chat/${conversation.id}`);
+		} catch {
+			// handle silently
+		} finally {
+			isCreatingGroup = false;
+		}
+	}
 </script>
 
 <div class="flex h-full">
 	<!-- Conversation List Sidebar (desktop) -->
 	<aside class="hidden lg:flex flex-col w-72 border-r border-niva-glass-border bg-niva-surface-1/50 shrink-0">
 		<div class="p-4 border-b border-niva-glass-border">
-			<h2 class="text-sm font-semibold text-niva-text font-[Manrope]">Conversations</h2>
+			<div class="flex items-center justify-between">
+				<h2 class="text-sm font-semibold text-niva-text font-[Manrope]">Conversations</h2>
+				<button
+					onclick={() => showGroupDialog = true}
+					class="p-1.5 rounded-lg hover:bg-white/5 text-niva-text-secondary hover:text-niva-accent transition-colors cursor-pointer"
+					title="New Group Chat"
+				>
+					<Users size={14} />
+				</button>
+			</div>
 		</div>
 		<div class="flex-1 overflow-y-auto niva-scrollbar p-2 space-y-1">
 			{#if conversations.length === 0}
@@ -298,7 +332,10 @@
 									? 'bg-niva-accent/10 border border-niva-accent/20'
 									: 'hover:bg-white/5 border border-transparent'}"
 						>
-							<p class="text-sm font-medium text-niva-text truncate pr-6">{conv.title}</p>
+						<p class="text-sm font-medium text-niva-text truncate pr-6">
+							{#if conv.is_group}<Users size={11} class="inline-block mr-1 text-niva-accent opacity-70" />{/if}
+							{conv.title}
+						</p>
 							<p class="text-[11px] text-niva-text-secondary mt-1 truncate">{conv.last_message || 'No messages'}</p>
 						</button>
 						
@@ -513,3 +550,55 @@
 		</div>
 	</div>
 </div>
+
+<!-- Group Creation Dialog -->
+{#if showGroupDialog}
+	<div class="fixed inset-0 z-50 flex items-center justify-center p-4">
+		<button onclick={() => showGroupDialog = false} class="absolute inset-0 bg-black/50 backdrop-blur-sm border-none cursor-default" aria-label="Close dialog"></button>
+		<div class="relative glass-panel p-6 rounded-2xl border border-white/10 w-full max-w-md space-y-5 shadow-2xl">
+			<div class="flex items-center justify-between">
+				<div class="flex items-center gap-2">
+					<Users size={18} class="text-niva-accent" />
+					<h3 class="text-sm font-bold text-niva-text">New Group Chat</h3>
+				</div>
+				<button onclick={() => showGroupDialog = false} class="p-1.5 rounded-lg hover:bg-white/5 text-niva-text-secondary cursor-pointer">
+					<X size={14} />
+				</button>
+			</div>
+			<div class="space-y-3">
+				<div class="space-y-1.5">
+					<label for="groupName" class="text-[10px] font-bold text-niva-text-secondary uppercase tracking-wider">Group Name</label>
+					<input
+						id="groupName"
+						type="text"
+						bind:value={groupTitle}
+						placeholder="e.g. Study Group, Project Team..."
+						class="w-full h-10 px-4 rounded-xl bg-white/5 border border-niva-glass-border text-sm text-niva-text outline-none focus:border-niva-accent/30 transition-colors"
+					/>
+				</div>
+				<div class="space-y-1.5">
+					<label for="groupMembers" class="text-[10px] font-bold text-niva-text-secondary uppercase tracking-wider">Members (emails, comma separated)</label>
+					<input
+						id="groupMembers"
+						type="text"
+						bind:value={groupEmails}
+						placeholder="user1@email.com, user2@email.com"
+						class="w-full h-10 px-4 rounded-xl bg-white/5 border border-niva-glass-border text-sm text-niva-text outline-none focus:border-niva-accent/30 transition-colors"
+					/>
+				</div>
+			</div>
+			<button
+				onclick={handleCreateGroup}
+				disabled={!groupTitle.trim() || isCreatingGroup}
+				class="w-full h-10 rounded-xl bg-niva-accent text-niva-bg text-sm font-bold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity disabled:opacity-50 cursor-pointer"
+			>
+				{#if isCreatingGroup}
+					<Loader2 size={14} class="animate-spin" />
+				{:else}
+					<UserPlus size={14} />
+				{/if}
+				Create Group
+			</button>
+		</div>
+	</div>
+{/if}

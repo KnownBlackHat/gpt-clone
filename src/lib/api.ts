@@ -160,10 +160,44 @@ export const api = {
         /**
          * Generate a quiz based on a topic.
          */
-        generate: (topic: string, amount: number) =>
+        generate: (topic: string, amount: number, difficulty: 'easy' | 'medium' | 'hard' = 'medium') =>
             request<{ title: string; questions: QuizQuestion[] }>('/quiz/generate', {
                 method: 'POST',
-                body: { topic, amount },
+                body: { topic, amount, difficulty },
+            }),
+    },
+
+    groupChat: {
+        /**
+         * Create a new group conversation with optional initial members.
+         */
+        createGroup: (title: string, memberEmails: string[] = []) =>
+            request<{ conversation: Conversation; members: GroupMember[] }>('/conversations/group', {
+                method: 'POST',
+                body: { title, memberEmails },
+            }),
+
+        /**
+         * List all members of a group conversation.
+         */
+        members: (conversationId: string) =>
+            request<{ members: GroupMember[] }>(`/conversations/${conversationId}/members`),
+
+        /**
+         * Invite a user to a group conversation by email.
+         */
+        addMember: (conversationId: string, email: string) =>
+            request<{ member: GroupMember }>(`/conversations/${conversationId}/members`, {
+                method: 'POST',
+                body: { email },
+            }),
+
+        /**
+         * Remove a member from a group conversation.
+         */
+        removeMember: (conversationId: string, memberId: string) =>
+            request(`/conversations/${conversationId}/members/${memberId}`, {
+                method: 'DELETE',
             }),
     },
 };
@@ -182,6 +216,7 @@ export interface Conversation {
     id: string;
     title: string;
     category: string;
+    is_group?: boolean;
     created_at: string;
     updated_at: string;
     last_message?: string;
@@ -201,4 +236,12 @@ export interface QuizQuestion {
     options: string[];
     correctIndex: number;
     explanation: string;
+}
+
+export interface GroupMember {
+    id: string;
+    username: string;
+    email: string;
+    role: 'owner' | 'member';
+    joined_at?: string;
 }

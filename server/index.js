@@ -8,6 +8,7 @@ import conversationRoutes from './routes/conversations.js';
 import messageRoutes from './routes/messages.js';
 import userRoutes from './routes/user.js';
 import quizRoutes from './routes/quiz.js';
+import groupChatRoutes from './routes/groupchat.js';
 import pool from './db/index.js';
 
 dotenv.config();
@@ -51,6 +52,7 @@ app.get('/api/public/share/:shareId', async (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/conversations', conversationRoutes);
 app.use('/api/conversations', messageRoutes);
+app.use('/api/conversations', groupChatRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/quiz', quizRoutes);
 

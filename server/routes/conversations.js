@@ -9,11 +9,12 @@ router.use(authMiddleware);
 router.get('/', async (req, res) => {
     try {
         const result = await pool.query(
-            `SELECT c.id, c.title, c.category, c.created_at, c.updated_at,
+            `SELECT c.id, c.title, c.category, c.is_group, c.created_at, c.updated_at,
               (SELECT content FROM messages WHERE conversation_id = c.id ORDER BY created_at DESC LIMIT 1) as last_message,
               (SELECT COUNT(*) FROM messages WHERE conversation_id = c.id)::int as message_count
        FROM conversations c
        WHERE c.user_id = $1
+          OR c.id IN (SELECT conversation_id FROM conversation_members WHERE user_id = $1)
        ORDER BY c.updated_at DESC`,
             [req.user.userId]
         );

@@ -16,14 +16,23 @@ const DEFAULT_MODEL = 'llama3-70b-8192'; // Using a reliable large model for JSO
 
 router.post('/generate', async (req, res) => {
     try {
-        const { topic, amount = 5 } = req.body;
+        const { topic, amount = 5, difficulty = 'medium' } = req.body;
 
         if (!topic) {
             return res.status(400).json({ error: 'Topic is required' });
         }
 
+        const difficultyGuide = {
+            easy: 'Generate straightforward questions suitable for beginners. Focus on fundamental concepts and basic recall.',
+            medium: 'Generate moderately challenging questions that require good understanding of the subject. Include some application-based questions.',
+            hard: 'Generate advanced, expert-level questions. Include nuanced scenarios, edge cases, and questions that require deep analytical thinking.',
+        };
+
         const systemPrompt = `
 You are a professional quiz generator. Your task is to generate a high-quality multiple choice quiz based on the user's topic.
+Difficulty level: ${(difficulty || 'medium').toUpperCase()}
+${difficultyGuide[difficulty] || difficultyGuide.medium}
+
 You must return ONLY a JSON object with the following structure:
 {
   "title": "A catchy title for the quiz",
@@ -44,7 +53,7 @@ The JSON must be valid and contain no other text before or after it.
             model: DEFAULT_MODEL,
             messages: [
                 { role: 'system', content: systemPrompt },
-                { role: 'user', content: `Generate a quiz about: ${topic}` }
+                { role: 'user', content: `Generate a ${difficulty} difficulty quiz about: ${topic}` }
             ],
             response_format: { type: 'json_object' }
         });
