@@ -73,6 +73,7 @@ async function runMigrations() {
             ALTER TABLE conversations ADD COLUMN IF NOT EXISTS is_group BOOLEAN DEFAULT FALSE;
             ALTER TABLE conversations ADD COLUMN IF NOT EXISTS is_archived BOOLEAN DEFAULT FALSE;
             ALTER TABLE messages ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES users(id) ON DELETE SET NULL;
+            ALTER TABLE messages ADD COLUMN IF NOT EXISTS pdf_text TEXT DEFAULT NULL;
         `);
 
         // Create conversation_members table

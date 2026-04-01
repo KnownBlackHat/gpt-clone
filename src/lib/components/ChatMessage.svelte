@@ -259,6 +259,27 @@
 			</div>
 		{/if}
 
+		{#if message.pdf_text}
+			<div class="mt-3 p-3 rounded-2xl glass-panel border border-niva-accent/20 flex items-center justify-between group/pdf niva-glow-sm">
+				<div class="flex items-center gap-3">
+					<div class="w-10 h-10 rounded-xl bg-niva-accent/10 flex items-center justify-center text-niva-accent">
+						<FileText size={20} />
+					</div>
+					<div>
+						<p class="text-xs font-bold text-niva-text">Document Analyzed</p>
+						<p class="text-[10px] text-niva-text-secondary">Ready for study features</p>
+					</div>
+				</div>
+				<button
+					onclick={() => onGenerateQuiz(message.id)}
+					class="p-2 px-4 rounded-xl bg-niva-accent text-niva-bg text-[11px] font-bold hover:scale-105 active:scale-95 transition-all cursor-pointer flex items-center gap-2"
+				>
+					<LayoutList size={14} />
+					<span>GENERATE QUIZZ</span>
+				</button>
+			</div>
+		{/if}
+
 		{#if message.image_url}
 			<div class="mt-3 rounded-2xl overflow-hidden border border-white/10 shadow-xl max-w-full md:max-w-sm group/img relative">
 				<img src={message.image_url} alt="User upload" class="w-full h-auto object-cover transition-transform duration-500 group-hover/img:scale-105" />

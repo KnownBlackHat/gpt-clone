@@ -88,7 +88,7 @@ router.get('/:conversationId/messages', async (req, res) => {
         }
 
         const result = await pool.query(
-            `SELECT m.id, m.role, m.content, m.image_url, m.created_at, u.username 
+            `SELECT m.id, m.role, m.content, m.image_url, m.pdf_text, m.created_at, u.username 
              FROM messages m
              LEFT JOIN users u ON u.id = m.user_id
              WHERE m.conversation_id = $1 
@@ -232,8 +232,8 @@ INSTRUCTIONS:
 
         // 5. Save User Message in DB
         const userMsg = await pool.query(
-            'INSERT INTO messages (conversation_id, role, content, image_url, user_id) VALUES ($1, $2, $3, $4, $5) RETURNING id, role, content, image_url, created_at',
-            [req.params.conversationId, 'user', content || (pdfData ? 'Uploaded a PDF' : 'Sent an image'), imageUrl || null, userId]
+            'INSERT INTO messages (conversation_id, role, content, image_url, user_id, pdf_text) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, role, content, image_url, pdf_text, created_at',
+            [req.params.conversationId, 'user', content || (pdfText ? 'Uploaded a PDF' : imageUrl ? 'Sent an image' : ''), imageUrl || null, userId, pdfText || null]
         );
 
         // Update conversation title if needed

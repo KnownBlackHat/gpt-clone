@@ -219,10 +219,18 @@ export const api = {
         /**
          * Generate a quiz based on a topic.
          */
-        generate: (topic: string, amount: number, difficulty: 'easy' | 'medium' | 'hard' = 'medium') =>
+        generate: (params: {
+            topic?: string;
+            amount?: number;
+            difficulty?: 'easy' | 'medium' | 'hard';
+            pdfData?: string;
+            pyqData?: string;
+            syllabus?: string;
+            marks?: number;
+        }) =>
             request<{ title: string; questions: QuizQuestion[] }>('/quiz/generate', {
                 method: 'POST',
-                body: { topic, amount, difficulty },
+                body: params,
             }),
     },
 
@@ -258,6 +266,14 @@ export const api = {
             request(`/conversations/${conversationId}/members/${memberId}`, {
                 method: 'DELETE',
             }),
+
+        /**
+         * Join a conversation via a shareable link ID.
+         */
+        joinByLink: (shareId: string) =>
+            request<{ conversationId: string }>(`/conversations/join/${shareId}`, {
+                method: 'POST',
+            }),
     },
 };
 
@@ -288,14 +304,18 @@ export interface Message {
     content: string;
     image_url?: string;
     username?: string;
+    pdf_text?: string;
     created_at: string;
 }
 
 export interface QuizQuestion {
+    type: 'mcq' | 'short' | 'long';
     question: string;
-    options: string[];
-    correctIndex: number;
+    options?: string[];
+    correctIndex?: number;
+    solution?: string;
     explanation: string;
+    marks: number;
 }
 
 export interface GroupMember {

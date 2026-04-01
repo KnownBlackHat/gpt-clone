@@ -301,8 +301,12 @@
 	}
 
 	function handleGenerateQuiz() {
-		// Capture context from messages (last few for context)
-		const context = messages.map(m => m.content).join('\n\n').slice(-4000);
+		// Capture context from messages, prioritizing PDF text if available
+		const context = messages.map(m => {
+			if (m.pdf_text) return `[PDF CONTENT]:\n${m.pdf_text}`;
+			return m.content;
+		}).join('\n\n').slice(-12000); // Larger window for deep PDF analysis
+
 		sessionStorage.setItem('niva_quiz_context', context);
 		goto('/quiz?from_chat=true');
 	}

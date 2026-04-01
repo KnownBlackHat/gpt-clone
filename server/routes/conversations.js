@@ -114,6 +114,7 @@ router.put('/:id', async (req, res) => {
 });
 
 // POST /api/conversations/:id/share
+// Generates or returns a shareable link ID
 router.post('/:id/share', async (req, res) => {
     try {
         const { id } = req.params;
@@ -128,9 +129,9 @@ router.post('/:id/share', async (req, res) => {
 
         let shareId = conv.rows[0].share_id;
         if (!shareId) {
-            // Generate a new share_id if not already shared
+            // Generate a new share_id and mark as group
             const result = await pool.query(
-                'UPDATE conversations SET share_id = uuid_generate_v4() WHERE id = $1 RETURNING share_id',
+                'UPDATE conversations SET share_id = uuid_generate_v4(), is_group = TRUE WHERE id = $1 RETURNING share_id',
                 [id]
             );
             shareId = result.rows[0].share_id;
@@ -139,6 +140,40 @@ router.post('/:id/share', async (req, res) => {
         res.json({ shareId });
     } catch (err) {
         console.error('Share conversation error:', err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// POST /api/conversations/join/:shareId
+// Join a conversation via a shareable ID
+router.post('/join/:shareId', async (req, res) => {
+    try {
+        const { shareId } = req.params;
+        const userId = req.user.userId;
+
+        // Find conversation by share_id
+        const conv = await pool.query(
+            'SELECT id, user_id FROM conversations WHERE share_id = $1',
+            [shareId]
+        );
+
+        if (conv.rows.length === 0) {
+            return res.status(404).json({ error: 'Invalid or expired share link' });
+        }
+
+        const conversationId = conv.rows[0].id;
+
+        // Add user as member (if not already the owner or a member)
+        if (conv.rows[0].user_id !== userId) {
+            await pool.query(
+                'INSERT INTO conversation_members (conversation_id, user_id, role) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING',
+                [conversationId, userId, 'member']
+            );
+        }
+
+        res.json({ conversationId });
+    } catch (err) {
+        console.error('Join conversation error:', err);
         res.status(500).json({ error: 'Internal server error' });
     }
 });

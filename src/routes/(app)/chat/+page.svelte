@@ -334,6 +334,34 @@
 		activeMenuId = null;
 	}
 
+	async function handleInviteLink(id: string) {
+		try {
+			const { shareId } = await api.conversations.share(id);
+			const joinUrl = `${window.location.origin}/join/${shareId}`;
+			
+			try {
+				if (navigator.clipboard && window.isSecureContext) {
+					await navigator.clipboard.writeText(joinUrl);
+					alert("Group Invite link copied to clipboard! Anyone with this link can now join and participate.");
+				} else {
+					throw new Error("Clipboard API unavailable");
+				}
+			} catch (copyErr) {
+				console.warn("Clipboard copy failed, showing link instead:", copyErr);
+				prompt("Copy your invite link:", joinUrl);
+			}
+
+			// Optimistically update the UI if it was not already a group
+			conversations = conversations.map(c => 
+				c.id === id ? { ...c, is_group: true } : c
+			);
+		} catch (err: any) {
+			console.error("Invite failed:", err);
+			alert(err.message || 'Failed to generate invite link.');
+		}
+		activeMenuId = null;
+	}
+
 	$effect(() => {
 		loadConversations();
 	});
@@ -421,7 +449,11 @@
 							<div class="absolute right-2 top-10 w-48 bg-niva-surface-2 border border-niva-glass-border rounded-xl shadow-2xl z-50 p-1 animate-in fade-in zoom-in duration-200">
 								<button onclick={() => handleSidebarShare(conv.id)} class="w-full flex items-center gap-2 px-3 py-2 text-xs text-niva-text hover:bg-white/5 rounded-lg transition-colors cursor-pointer text-left">
 									<Share2 size={14} class="text-niva-text-secondary" />
-									Share Chat
+									Share View
+								</button>
+								<button onclick={() => handleInviteLink(conv.id)} class="w-full flex items-center gap-2 px-3 py-2 text-xs text-niva-text hover:bg-white/5 rounded-lg transition-colors cursor-pointer text-left">
+									<UserPlus size={14} class="text-niva-text-secondary" />
+									Invite by Link
 								</button>
 								<button onclick={() => handleRename(conv.id)} class="w-full flex items-center gap-2 px-3 py-2 text-xs text-niva-text hover:bg-white/5 rounded-lg transition-colors cursor-pointer text-left">
 									<Edit2 size={14} class="text-niva-text-secondary" />

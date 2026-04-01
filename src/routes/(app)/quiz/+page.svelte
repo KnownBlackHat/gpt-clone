@@ -14,6 +14,10 @@
 		History,
 		ChevronDown,
 		ChevronUp,
+		FileText,
+		X,
+		Settings,
+		ChevronLeft,
 	} from '@lucide/svelte';
 	import { fade, fly, scale } from 'svelte/transition';
 
@@ -28,6 +32,18 @@
 	let difficulty = $state<Difficulty>('medium');
 	let isContextBased = $state(false);
 	let quizContext = $state<string | null>(null);
+	let selectedPdf = $state<string | null>(null);
+	let pdfName = $state<string | null>(null);
+	let pdfInput: HTMLInputElement;
+
+	// Advanced Features
+	let showAdvanced = $state(false);
+	let syllabus = $state('');
+	let marksPerQuestion = $state(1);
+	let pyqData = $state<string | null>(null);
+	let pyqName = $state<string | null>(null);
+	let pyqInput: HTMLInputElement;
+	let showSolutions = $state(false);
 
 	$effect(() => {
 		const storedContext = sessionStorage.getItem('niva_quiz_context');
@@ -43,6 +59,46 @@
 		quizContext = null;
 		isContextBased = false;
 		topic = '';
+	}
+
+	function handlePdfUpload(e: Event) {
+		const file = (e.target as HTMLInputElement).files?.[0];
+		if (!file) return;
+		
+		pdfName = file.name;
+		const reader = new FileReader();
+		reader.onload = (e) => {
+			selectedPdf = e.target?.result as string;
+			isContextBased = true;
+			topic = `Study Material: ${file.name}`;
+		};
+		reader.readAsDataURL(file);
+	}
+
+	function removePdf() {
+		selectedPdf = null;
+		pdfName = null;
+		isContextBased = false;
+		topic = '';
+		if (pdfInput) pdfInput.value = '';
+	}
+
+	function handlePyqUpload(e: Event) {
+		const file = (e.target as HTMLInputElement).files?.[0];
+		if (!file) return;
+		
+		pyqName = file.name;
+		const reader = new FileReader();
+		reader.onload = (e) => {
+			pyqData = e.target?.result as string;
+		};
+		reader.readAsDataURL(file);
+	}
+
+	function removePyq() {
+		pyqData = null;
+		pyqName = null;
+		if (pyqInput) pyqInput.value = '';
 	}
 
 	// Quiz runtime
@@ -141,12 +197,22 @@
 	}
 
 	async function generateQuiz() {
-		if (!topic.trim()) return;
+		if (!topic.trim() && !pdfName && !syllabus) return;
 		try {
 			state = 'generating';
 			error = null;
-			// If context-based, we prioritize the context over the topic string
-			const data = await api.quiz.generate(isContextBased ? (quizContext || topic) : topic, questionCount, difficulty);
+			showSolutions = false;
+			
+			const data = await api.quiz.generate({
+				topic: isContextBased ? (quizContext || topic) : topic,
+				amount: questionCount,
+				difficulty,
+				pdfData: selectedPdf || undefined,
+				pyqData: pyqData || undefined,
+				syllabus: syllabus || undefined,
+				marks: marksPerQuestion
+			});
+
 			quizTitle = isContextBased ? "Assignment Review" : data.title;
 			questions = data.questions;
 			currentIndex = 0;
@@ -209,8 +275,12 @@
 	function restart() {
 		stopTimer();
 		state = 'setup';
-		topic = '';
-		questions = [];
+		clearContext();
+		removePdf();
+		removePyq();
+		syllabus = '';
+		marksPerQuestion = 1;
+		showAdvanced = false;
 	}
 
 	$effect(() => {
@@ -291,17 +361,67 @@
 					</div>
 
 					<div class="space-y-6 pt-4">
-						<!-- Topic Input -->
-						<div class="space-y-2">
-							<label for="topic" class="text-[11px] font-bold text-niva-text-secondary uppercase tracking-[0.2em] ml-1">Topic or Subject</label>
-							<div class="relative group/input">
+						<!-- Quiz Source Selection -->
+						<div class="space-y-4">
+							<div class="flex items-center justify-between px-1">
+								<label class="text-[11px] font-bold text-niva-text-secondary uppercase tracking-[0.2em] ml-1">Quiz Source</label>
+								{#if isContextBased}
+									<button 
+										onclick={clearContext}
+										class="text-[10px] text-niva-accent hover:underline cursor-pointer font-bold"
+									>
+										Clear Context
+									</button>
+								{/if}
+							</div>
+							
+							<div class="space-y-3">
 								<input 
-									id="topic"
-									type="text" 
-									bind:value={topic}
-									placeholder="e.g. Modern Physics, World History, JavaScript..."
-									class="w-full bg-white/5 border border-white/10 p-4 rounded-2xl outline-none focus:border-niva-accent/40 focus:bg-white/10 transition-all text-sm group-hover/input:border-white/20"
+									type="file" 
+									accept=".pdf" 
+									bind:this={pdfInput}
+									onchange={handlePdfUpload}
+									class="hidden"
 								/>
+								
+								{#if pdfName}
+									<div class="flex items-center justify-between p-4 rounded-2xl bg-niva-accent/10 border border-niva-accent/20 animate-in fade-in zoom-in duration-300">
+										<div class="flex items-center gap-3">
+											<div class="w-8 h-8 rounded-lg bg-niva-accent/20 flex items-center justify-center text-niva-accent">
+												<FileText size={16} />
+											</div>
+											<span class="text-xs font-bold text-niva-text truncate max-w-[200px]">{pdfName}</span>
+										</div>
+										<button 
+											onclick={removePdf}
+											class="p-1.5 rounded-lg hover:bg-white/5 text-niva-text-secondary transition-colors cursor-pointer"
+										>
+											<X size={14} />
+										</button>
+									</div>
+								{:else if !quizContext}
+									<button 
+										onclick={() => pdfInput.click()}
+										class="w-full p-4 rounded-2xl border-2 border-dashed border-white/10 hover:border-niva-accent/40 hover:bg-white/5 transition-all flex flex-col items-center justify-center gap-2 group/upload cursor-pointer"
+									>
+										<div class="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-niva-text-secondary group-hover/upload:text-niva-accent transition-colors">
+											<FileText size={20} />
+										</div>
+										<span class="text-xs font-bold text-niva-text-secondary group-hover/upload:text-niva-text transition-colors">Upload Study Material (PDF)</span>
+										<span class="text-[10px] opacity-40">Generate from your assignment</span>
+									</button>
+								{/if}
+
+								<div class="relative group/input">
+									<input 
+										id="topic"
+										type="text" 
+										bind:value={topic}
+										placeholder={isContextBased ? "Describe this context..." : "e.g. Modern Physics, World History, JavaScript..."}
+										class="w-full bg-white/5 border border-white/10 p-4 rounded-2xl outline-none focus:border-niva-accent/40 focus:bg-white/10 transition-all text-sm group-hover/input:border-white/20"
+										readonly={isContextBased && !selectedPdf}
+									/>
+								</div>
 							</div>
 						</div>
 
@@ -323,6 +443,158 @@
 									</button>
 								{/each}
 							</div>
+						</div>
+
+						<!-- Advanced Options Toggle -->
+						<div class="pt-4 border-t border-white/5 order-last">
+							<button 
+								onclick={() => showAdvanced = !showAdvanced}
+								class="flex items-center gap-2 text-[10px] font-bold text-niva-text-secondary hover:text-niva-accent transition-colors uppercase tracking-widest cursor-pointer ml-1"
+							>
+								<Settings size={12} class={showAdvanced ? 'rotate-90 transition-transform' : ''} />
+								Advanced Options
+								<ChevronDown size={12} class={showAdvanced ? 'rotate-180 transition-transform' : ''} />
+							</button>
+
+							{#if showAdvanced}
+								<div in:fly={{ y: -10, duration: 300 }} class="mt-4 space-y-5 p-5 rounded-2xl bg-white/5 border border-white/5 animate-in fade-in duration-300 shadow-inner">
+									<!-- Syllabus -->
+									<div class="space-y-2">
+										<label for="syllabus" class="text-[10px] font-bold text-niva-text-secondary uppercase tracking-widest ml-1">Syllabus / Exam Scope</label>
+										<textarea 
+											id="syllabus"
+											bind:value={syllabus}
+											placeholder="Specify topics, chapters or learning objectives..."
+											class="w-full bg-white/5 border border-white/10 p-3 rounded-xl outline-none focus:border-niva-accent/40 text-xs min-h-[100px] niva-scrollbar placeholder:opacity-30"
+										></textarea>
+									</div>
+
+									<!-- Marks -->
+									<div class="flex items-center justify-between px-1">
+										<label for="marks" class="text-[10px] font-bold text-niva-text-secondary uppercase tracking-widest">Marks per Question</label>
+										<div class="flex items-center gap-3">
+											<button 
+												onclick={() => marksPerQuestion = Math.max(1, marksPerQuestion - 1)}
+												class="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center hover:bg-white/20 text-niva-text transition-colors border border-white/5 font-bold"
+											>-</button>
+											<span class="text-sm font-black w-6 text-center text-niva-accent">{marksPerQuestion}</span>
+											<button 
+												onclick={() => marksPerQuestion++}
+												class="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center hover:bg-white/20 text-niva-text transition-colors border border-white/5 font-bold"
+											>+</button>
+										</div>
+									</div>
+
+									<!-- PYQ Upload -->
+									<div class="space-y-2">
+										<label class="text-[10px] font-bold text-niva-text-secondary uppercase tracking-widest ml-1">Style Reference (PYQ Upload)</label>
+										<input 
+											type="file" 
+											accept=".pdf" 
+											bind:this={pyqInput}
+											onchange={handlePyqUpload}
+											class="hidden"
+										/>
+										
+										{#if pyqName}
+											<div class="flex items-center justify-between p-3 rounded-xl bg-niva-accent/5 border border-niva-accent/20 transition-all">
+												<div class="flex items-center gap-2">
+													<FileText size={14} class="text-niva-accent" />
+													<span class="text-[10px] font-bold text-niva-text truncate max-w-[150px]">{pyqName}</span>
+												</div>
+												<button onclick={removePyq} class="text-niva-text-secondary hover:text-niva-error transition-colors cursor-pointer">
+													<X size={14} />
+												</button>
+											</div>
+										{:else}
+											<button 
+												onclick={() => pyqInput.click()}
+												class="w-full p-4 rounded-xl border border-dashed border-white/20 hover:border-niva-accent/40 hover:bg-white/5 transition-all flex flex-col items-center justify-center gap-1.5 text-niva-text-secondary hover:text-niva-text cursor-pointer"
+											>
+												<FileText size={16} />
+												<span class="text-[10px] font-bold">Upload Previous Year Question Paper</span>
+												<span class="text-[9px] opacity-40">AI will mimic this drafting style</span>
+											</button>
+										{/if}
+									</div>
+								</div>
+							{/if}
+						</div>
+
+						<!-- Advanced Options Toggle -->
+						<div class="pt-4 border-t border-white/5 order-last">
+							<button 
+								onclick={() => showAdvanced = !showAdvanced}
+								class="flex items-center gap-2 text-[10px] font-bold text-niva-text-secondary hover:text-niva-accent transition-colors uppercase tracking-widest cursor-pointer ml-1"
+							>
+								<Settings size={12} class={showAdvanced ? 'rotate-90 transition-transform' : ''} />
+								Advanced Options
+								<ChevronDown size={12} class={showAdvanced ? 'rotate-180 transition-transform' : ''} />
+							</button>
+
+							{#if showAdvanced}
+								<div in:fly={{ y: -10, duration: 300 }} class="mt-4 space-y-5 p-5 rounded-2xl bg-white/5 border border-white/5 animate-in fade-in duration-300 shadow-inner">
+									<!-- Syllabus -->
+									<div class="space-y-2">
+										<label for="syllabus" class="text-[10px] font-bold text-niva-text-secondary uppercase tracking-widest ml-1">Syllabus / Exam Scope</label>
+										<textarea 
+											id="syllabus"
+											bind:value={syllabus}
+											placeholder="Specify topics, chapters or learning objectives..."
+											class="w-full bg-white/5 border border-white/10 p-3 rounded-xl outline-none focus:border-niva-accent/40 text-xs min-h-[100px] niva-scrollbar placeholder:opacity-30"
+										></textarea>
+									</div>
+
+									<!-- Marks -->
+									<div class="flex items-center justify-between px-1">
+										<label for="marks" class="text-[10px] font-bold text-niva-text-secondary uppercase tracking-widest">Marks per Question</label>
+										<div class="flex items-center gap-3">
+											<button 
+												onclick={() => marksPerQuestion = Math.max(1, marksPerQuestion - 1)}
+												class="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center hover:bg-white/20 text-niva-text transition-colors border border-white/5 font-bold"
+											>-</button>
+											<span class="text-sm font-black w-6 text-center text-niva-accent">{marksPerQuestion}</span>
+											<button 
+												onclick={() => marksPerQuestion++}
+												class="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center hover:bg-white/20 text-niva-text transition-colors border border-white/5 font-bold"
+											>+</button>
+										</div>
+									</div>
+
+									<!-- PYQ Upload -->
+									<div class="space-y-2">
+										<label class="text-[10px] font-bold text-niva-text-secondary uppercase tracking-widest ml-1">Style Reference (PYQ Upload)</label>
+										<input 
+											type="file" 
+											accept=".pdf" 
+											bind:this={pyqInput}
+											onchange={handlePyqUpload}
+											class="hidden"
+										/>
+										
+										{#if pyqName}
+											<div class="flex items-center justify-between p-3 rounded-xl bg-niva-accent/5 border border-niva-accent/20 transition-all">
+												<div class="flex items-center gap-2">
+													<FileText size={14} class="text-niva-accent" />
+													<span class="text-[10px] font-bold text-niva-text truncate max-w-[150px]">{pyqName}</span>
+												</div>
+												<button onclick={removePyq} class="text-niva-text-secondary hover:text-niva-error transition-colors cursor-pointer">
+													<X size={14} />
+												</button>
+											</div>
+										{:else}
+											<button 
+												onclick={() => pyqInput.click()}
+												class="w-full p-4 rounded-xl border border-dashed border-white/20 hover:border-niva-accent/40 hover:bg-white/5 transition-all flex flex-col items-center justify-center gap-1.5 text-niva-text-secondary hover:text-niva-text cursor-pointer"
+											>
+												<FileText size={16} />
+												<span class="text-[10px] font-bold">Upload Previous Year Question Paper</span>
+												<span class="text-[9px] opacity-40">AI will mimic this drafting style</span>
+											</button>
+										{/if}
+									</div>
+								</div>
+							{/if}
 						</div>
 
 						<!-- Question Count -->
@@ -420,49 +692,85 @@
 						</h2>
 					</div>
 
-					<div class="grid grid-cols-1 gap-4">
-						{#each currentQuestion.options as option, i}
-							<button 
-								onclick={() => handleOptionSelect(i)}
-								disabled={selectedOption !== null}
-								class="group relative w-full text-left p-6 rounded-2xl transition-all duration-300 border cursor-pointer
-									{selectedOption === null 
-										? 'glass-panel hover:bg-white/10 hover:border-white/20 border-white/5' 
-										: i === currentQuestion.correctIndex
-											? 'bg-green-500/10 border-green-500/30 ring-1 ring-green-500/20'
-											: selectedOption === i
-												? 'bg-red-500/10 border-red-500/30 ring-1 ring-red-500/20'
-												: 'glass-panel opacity-50 border-white/5'}"
-							>
-								<div class="flex items-center gap-4 relative z-10">
-									<span class="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold border transition-colors
-										{selectedOption === null
-											? 'bg-white/5 border-white/10 group-hover:border-niva-accent/50 group-hover:text-niva-accent'
-											: i === currentQuestion.correctIndex
-												? 'bg-green-500/20 border-green-500/50 text-green-400'
-												: selectedOption === i
-													? 'bg-red-500/20 border-red-500/50 text-red-400'
-													: 'bg-white/5 border-white/10 text-white/30'}">
-										{String.fromCharCode(65 + i)}
+					<div class="space-y-4">
+						{#if currentQuestion.type === 'mcq'}
+							<div class="grid grid-cols-1 gap-3">
+								{#each currentQuestion.options || [] as option, i}
+									<button 
+										onclick={() => handleOptionSelect(i)}
+										disabled={selectedOption !== null}
+										class="group relative w-full text-left p-6 rounded-2xl transition-all duration-300 border cursor-pointer
+											{selectedOption === null 
+												? 'glass-panel hover:bg-white/10 hover:border-white/20 border-white/5' 
+												: i === currentQuestion.correctIndex
+													? 'bg-green-500/10 border-green-500/30 ring-1 ring-green-500/20'
+													: selectedOption === i
+														? 'bg-red-500/10 border-red-500/30 ring-1 ring-red-500/20'
+														: 'glass-panel opacity-50 border-white/5'}"
+									>
+										<div class="flex items-center gap-4 relative z-10">
+											<span class="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold border transition-colors
+												{selectedOption === null
+													? 'bg-white/5 border-white/10 group-hover:border-niva-accent/50 group-hover:text-niva-accent'
+													: i === currentQuestion.correctIndex
+														? 'bg-green-500/20 border-green-500/50 text-green-400'
+														: selectedOption === i
+															? 'bg-red-500/20 border-red-500/50 text-red-400'
+															: 'bg-white/5 border-white/10 text-white/30'}">
+												{String.fromCharCode(65 + i)}
+											</span>
+											<span class="flex-1 text-sm md:text-base font-medium transition-colors {selectedOption !== null && i !== currentQuestion.correctIndex ? 'text-white/50' : ''}">
+												{option}
+											</span>
+											
+											{#if selectedOption !== null}
+												{#if i === currentQuestion.correctIndex}
+													<div in:scale={{duration: 400}}>
+														<CheckCircle2 size={20} class="text-green-400" />
+													</div>
+												{:else if selectedOption === i}
+													<div in:scale={{duration: 400}}>
+														<XCircle size={20} class="text-red-400" />
+													</div>
+												{/if}
+											{/if}
+										</div>
+									</button>
+								{/each}
+							</div>
+						{:else}
+							<!-- Short/Long form question layout -->
+							<div class="glass-panel p-8 rounded-3xl border border-white/10 bg-white/5 space-y-6 shadow-inner">
+								<div class="flex items-center gap-2">
+									<div class="w-2 h-2 rounded-full {currentQuestion.type === 'long' ? 'bg-purple-400' : 'bg-blue-400'} animate-pulse"></div>
+									<span class="text-[10px] font-bold uppercase tracking-widest text-niva-text-secondary">
+										{currentQuestion.type} Form Question · {currentQuestion.marks} Marks
 									</span>
-									<span class="flex-1 text-sm md:text-base font-medium transition-colors {selectedOption !== null && i !== currentQuestion.correctIndex ? 'text-white/50' : ''}">
-										{option}
-									</span>
-									
-									{#if selectedOption !== null}
-										{#if i === currentQuestion.correctIndex}
-											<div in:scale={{duration: 400}}>
-												<CheckCircle2 size={20} class="text-green-400" />
-											</div>
-										{:else if selectedOption === i}
-											<div in:scale={{duration: 400}}>
-												<XCircle size={20} class="text-red-400" />
-											</div>
-										{/if}
-									{/if}
 								</div>
-							</button>
-						{/each}
+
+								{#if showSolutions || selectedOption !== null}
+									<div in:fade class="space-y-4">
+										<div class="p-6 rounded-2xl bg-niva-accent/5 border border-niva-accent/20 transition-all">
+											<p class="text-[10px] font-bold text-niva-accent uppercase tracking-widest mb-3 leading-none">Professional Solution</p>
+											<p class="text-sm text-niva-text leading-relaxed whitespace-pre-wrap">{currentQuestion.solution}</p>
+										</div>
+									</div>
+								{:else}
+									<div class="py-12 flex flex-col items-center justify-center text-center space-y-5">
+										<div class="w-14 h-14 rounded-2xl bg-white/5 flex items-center justify-center text-niva-text-secondary border border-white/10 shadow-inner">
+											<FileText size={28} />
+										</div>
+										<p class="text-xs text-niva-text-secondary max-w-[280px] mx-auto font-medium">Draft your response mentally or on paper. Click below to verify against the ideal solution.</p>
+										<button 
+											onclick={() => selectedOption = 0}
+											class="px-8 py-3 rounded-xl bg-niva-accent text-niva-bg text-[10px] font-bold uppercase tracking-widest hover:scale-105 transition-all cursor-pointer shadow-lg niva-glow-sm"
+										>
+											Reveal Ideal Solution
+										</button>
+									</div>
+								{/if}
+							</div>
+						{/if}
 					</div>
 
 					{#if selectedOption !== null}
@@ -526,30 +834,61 @@
 					</div>
 
 					<!-- Answers breakdown -->
-					<div class="space-y-2 text-left">
-						<button 
-							onclick={() => showHistory = !showHistory}
-							class="flex items-center gap-2 text-xs font-bold text-niva-text-secondary uppercase tracking-widest cursor-pointer hover:text-niva-text transition-colors"
-						>
-							Review Answers
-							{#if showHistory}
-								<ChevronUp size={14} />
-							{:else}
-								<ChevronDown size={14} />
-							{/if}
-						</button>
-						{#if showHistory}
-							<div in:fly={{ y: 10, duration: 200 }} class="space-y-2 max-h-64 overflow-y-auto niva-scrollbar">
+					<div class="space-y-4 text-left">
+						<div class="flex items-center justify-between">
+							<button 
+								onclick={() => showHistory = !showHistory}
+								class="flex items-center gap-2 text-xs font-bold text-niva-text-secondary uppercase tracking-widest cursor-pointer hover:text-niva-text transition-colors"
+							>
+								Review Answers
+								{#if showHistory}
+									<ChevronUp size={14} />
+								{:else}
+									<ChevronDown size={14} />
+								{/if}
+							</button>
+							<button 
+								onclick={() => showSolutions = !showSolutions}
+								class="px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-[9px] font-bold uppercase tracking-widest hover:bg-white/10 transition-all cursor-pointer flex items-center gap-1.5"
+							>
+								<Brain size={12} class="text-niva-accent" />
+								{showSolutions ? 'Hide Solutions' : 'Reveal All Solutions'}
+							</button>
+						</div>
+
+						{#if showHistory || showSolutions}
+							<div in:fly={{ y: 10, duration: 300 }} class="space-y-3 max-h-[30rem] overflow-y-auto niva-scrollbar pr-2">
 								{#each answers as answer, idx}
 									{@const q = questions[answer.questionIndex]}
-									<div class="p-3 rounded-xl {answer.isCorrect ? 'bg-green-500/5 border border-green-500/10' : 'bg-red-500/5 border border-red-500/10'}">
-										<p class="text-xs font-medium mb-1">{idx + 1}. {q.question}</p>
-										<p class="text-[10px] {answer.isCorrect ? 'text-green-400' : 'text-red-400'}">
-											{answer.isCorrect ? '✓ Correct' : `✗ Your answer: ${q.options[answer.selectedIndex] || 'Time\'s up'}`}
-											{#if !answer.isCorrect}
-												<span class="text-green-400 ml-2">Answer: {q.options[q.correctIndex]}</span>
+									<div class="p-4 rounded-2xl {q.type === 'mcq' ? (answer.isCorrect ? 'bg-green-500/5 border border-green-500/10' : 'bg-red-500/5 border border-red-500/10') : 'bg-white/5 border border-white/10'} space-y-3">
+										<div class="flex items-start justify-between gap-3">
+											<p class="text-xs font-bold leading-relaxed flex-1">{idx + 1}. {q.question}</p>
+											{#if q.type === 'mcq'}
+												<span class="text-[9px] font-black uppercase {answer.isCorrect ? 'text-green-400' : 'text-red-400'} shrink-0">
+													{answer.isCorrect ? 'Correct' : 'Incorrect'}
+												</span>
 											{/if}
-										</p>
+										</div>
+
+										{#if q.type === 'mcq'}
+											<p class="text-[10px] font-medium leading-relaxed opacity-70">
+												<span class={answer.isCorrect ? 'text-green-400' : 'text-red-400'}>
+													{answer.isCorrect ? '✓' : '✗'} Your answer: {q.options?.[answer.selectedIndex] || 'Skipped'}
+												</span>
+												{#if !answer.isCorrect}
+													<span class="text-green-400 block mt-1">Correct Answer: {q.options?.[q.correctIndex || 0]}</span>
+												{/if}
+											</p>
+										{/if}
+
+										{#if showSolutions || (q.type !== 'mcq' && showHistory)}
+											<div class="pt-3 border-t border-white/5 space-y-2">
+												<p class="text-[9px] font-bold text-niva-accent uppercase tracking-widest">Ideal Solution</p>
+												<p class="text-[11px] text-niva-text-secondary leading-relaxed italic">
+													{q.type === 'mcq' ? q.explanation : q.solution}
+												</p>
+											</div>
+										{/if}
 									</div>
 								{/each}
 							</div>
