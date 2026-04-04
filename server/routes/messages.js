@@ -224,43 +224,45 @@ INSTRUCTIONS:
       content: systemPromptContent,
     };
 
-    let modelMessages = [systemPrompt];
+    // prep history array
+    let payloadToThrowAtGroq = [systemPrompt];
 
-    // Add history
+    // add history ascending
     history.forEach((msg) => {
       const content =
         typeof msg.content === "string"
           ? msg.content
-          : JSON.stringify(msg.content);
+          : JSON.stringify(msg.content); // stringify fallback
       const prefix =
         isGroup && msg.role === "user" && msg.username
           ? `[${msg.username}]: `
           : "";
-      modelMessages.push({ role: msg.role, content: prefix + content });
+      payloadToThrowAtGroq.push({ role: msg.role, content: prefix + content });
     });
 
     // Add additional context (PDF/Search)
-    let contextText = "";
+    // add extra context if exists
+    let extraJunkText = "";
     if (pdfText) {
-      contextText += `\n\n### PDF CONTENT\n${pdfText}\n### END PDF\n`;
+      extraJunkText += `\n\n### PDF CONTENT\n${pdfText}\n### END PDF\n`;
     }
     if (searchResults && searchResults.organic) {
       const sources = searchResults.organic
         .map((s) => `- [${s.title}](${s.link})`)
         .join("\n");
-      contextText += `\n\n### SEARCH RESULTS\n${JSON.stringify(searchResults.organic, null, 2)}\n\n### AVAILABLE SOURCES FOR CITATION\n${sources}\n### END SEARCH\n`;
+      extraJunkText += `\n\n### SEARCH RESULTS\n${JSON.stringify(searchResults.organic, null, 2)}\n\n### AVAILABLE SOURCES FOR CITATION\n${sources}\n### END SEARCH\n`;
     }
 
-    if (contextText) {
-      modelMessages.push({
+    if (extraJunkText) {
+      payloadToThrowAtGroq.push({
         role: "system",
-        content: `Here is additional context found from searching or reading files provided by the user. Use this to help answer: ${contextText}`,
+        content: `Here is additional context found from searching or reading files provided by the user. Use this to help answer: ${extraJunkText}`,
       });
     }
 
     // Add current user message
     if (imageUrl) {
-      modelMessages.push({
+      payloadToThrowAtGroq.push({
         role: "user",
         content: [
           { type: "text", text: content || "Analyze this image." },
@@ -268,7 +270,7 @@ INSTRUCTIONS:
         ],
       });
     } else {
-      modelMessages.push({
+      payloadToThrowAtGroq.push({
         role: "user",
         content:
           (isGroup ? `[${userName}]: ` : "") +
@@ -309,7 +311,7 @@ INSTRUCTIONS:
       res.setHeader("Connection", "keep-alive");
 
       const groqStream = await groq.chat.completions.create({
-        messages: modelMessages,
+        messages: payloadToThrowAtGroq,
         model: VISION_MODEL,
         stream: true,
       });
@@ -336,9 +338,9 @@ INSTRUCTIONS:
       return;
     }
 
-    // Non-streaming fallback
+    // Non-streaming fallback - rarely hits this unless I messed up the frontend props
     const chatCompletion = await groq.chat.completions.create({
-      messages: modelMessages,
+      messages: payloadToThrowAtGroq,
       model: VISION_MODEL,
     });
 

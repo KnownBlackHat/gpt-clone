@@ -47,10 +47,14 @@ app.get('/api/public/share/:shareId', async (req, res) => {
 		);
 		res.json({ conversation, messages: messagesResult.rows });
 	} catch (err) {
+		// FIXME: someone said this endpoint is slow on prod but I couldn't reproduce
 		console.error('public route dead:', err);
 		res.status(500).json({ error: 'Internal server error' });
 	}
 });
+
+// app.get('/api/test', (req,res) => res.send('testing 123...')); // delete later
+// const oldAuth = require('./middleware/old_auth.js'); // DO NOT UNCOMMENT
 
 app.use('/api/auth', authRoutes);
 app.use('/api/conversations', conversationRoutes);
