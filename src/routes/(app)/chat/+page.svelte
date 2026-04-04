@@ -146,6 +146,26 @@
 		reader.readAsDataURL(file);
 	}
 
+	function handlePaste(e: ClipboardEvent) {
+		const items = e.clipboardData?.items;
+		if (!items) return;
+
+		for (const item of items) {
+			if (item.type.indexOf('image') !== -1) {
+				const file = item.getAsFile();
+				if (!file) continue;
+
+				const reader = new FileReader();
+				reader.onload = (e) => {
+					const base64 = e.target?.result as string;
+					selectedImage = base64;
+					imagePreview = base64;
+				};
+				reader.readAsDataURL(file);
+			}
+		}
+	}
+
 	function handleDocUpload(e: Event) {
 		const file = (e.target as HTMLInputElement).files?.[0];
 		if (!file) return;
@@ -790,6 +810,7 @@
 						bind:this={textareaElement}
 						bind:value={inputValue}
 						onkeydown={handleKeydown}
+						onpaste={handlePaste}
 						placeholder="Message Niva (search, upload pdf...)"
 						rows="1"
 						class="flex-1 bg-transparent border-none outline-none text-sm text-niva-text placeholder:text-niva-text-secondary resize-none max-h-32 niva-scrollbar overflow-y-auto"

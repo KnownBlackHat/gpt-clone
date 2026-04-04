@@ -131,6 +131,31 @@
 		reader.readAsDataURL(file);
 	}
 
+	function handlePaste(e: ClipboardEvent) {
+		const items = e.clipboardData?.items;
+		if (!items) return;
+
+		for (const item of items) {
+			if (item.type.indexOf('image') !== -1) {
+				const file = item.getAsFile();
+				if (!file) continue;
+
+				if (file.size > MAX_FILE_SIZE) {
+					errorMessage = `Image too large. Max size is ${MAX_FILE_SIZE / (1024 * 1024)}MB.`;
+					return;
+				}
+
+				const reader = new FileReader();
+				reader.onload = (e) => {
+					const base64 = e.target?.result as string;
+					selectedImage = base64;
+					imagePreview = base64;
+				};
+				reader.readAsDataURL(file);
+			}
+		}
+	}
+
 	function handleDocUpload(e: Event) {
 		errorMessage = null;
 		const file = (e.target as HTMLInputElement).files?.[0];
@@ -632,6 +657,7 @@
 					bind:this={textareaElement}
 					bind:value={inputValue}
 					onkeydown={handleKeydown}
+					onpaste={handlePaste}
 					placeholder="Message Niva..."
 					rows="1"
 					class="flex-1 bg-transparent border-none outline-none text-[13px] md:text-sm text-niva-text placeholder:text-niva-text-secondary resize-none max-h-24 md:max-h-32 niva-scrollbar overflow-y-auto py-1.5"
