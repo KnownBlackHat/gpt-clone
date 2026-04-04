@@ -5,10 +5,8 @@ import pool from '../db/index.js';
 
 const router = Router();
 
-/**
- * @route   POST /api/auth/signup
- * @desc    Registrations for new users. Using 12 rounds for bcrypt as a balance of speed/security.
- */
+// sign up route
+// using 12 bcrypt rounds cause it's fast enough but still safe
 router.post('/signup', async (req, res) => {
     try {
         const { username, email, password } = req.body;
@@ -56,16 +54,14 @@ router.post('/signup', async (req, res) => {
 
         res.status(201).json({ user, token });
     } catch (err) {
-        // NOTE: adding detailed logging here for now to catch the 500 error user reported
-        console.error('[AUTH_SIGNUP_ERROR]:', err.message, err.stack);
+        // ugh taking down the whole server cause of this
+        console.error('signup broke:', err.message, err.stack);
         res.status(500).json({ error: 'Internal server error' });
     }
 });
 
-/**
- * @route   POST /api/auth/login
- * @desc    Authenticate user & get token
- */
+// standard login
+// gives back a token in cookie + json
 router.post('/login', async (req, res) => {
     try {
         const { email, password } = req.body;
@@ -109,7 +105,7 @@ router.post('/login', async (req, res) => {
         const { password_hash, ...safeUser } = user;
         res.json({ user: safeUser, token });
     } catch (err) {
-        console.error('[AUTH_LOGIN_ERROR]:', err);
+        console.error('somebody failed login badly:', err);
         res.status(500).json({ error: 'Internal server error' });
     }
 });

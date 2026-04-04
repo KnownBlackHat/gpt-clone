@@ -470,6 +470,29 @@
 	$effect(() => {
 		if (conversationId) loadData();
 	});
+
+	// Real-time polling for group conversations
+	$effect(() => {
+		if (!conversationId) return;
+
+		const intervalId = setInterval(async () => {
+			// Skip polling while a message is actively being sent/generated
+			if (isLoading || isTyping) return;
+
+			try {
+				const msgData = await api.messages.list(conversationId);
+				// Only update state if messages have changed to avoid unnecessary re-renders
+				if (JSON.stringify(msgData.messages) !== JSON.stringify(messages)) {
+					messages = msgData.messages;
+					scrollToBottom();
+				}
+			} catch {
+				// Silently ignore polling errors
+			}
+		}, 2000);
+
+		return () => clearInterval(intervalId);
+	});
 </script>
 
 <div class="flex flex-col h-full">

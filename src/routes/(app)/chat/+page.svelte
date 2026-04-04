@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { onMount } from 'svelte';
 	import { api, type Conversation, type Message } from '$lib/api';
 	import { ui } from '$lib/stores/ui';
 	import {
@@ -24,6 +25,7 @@
 		ArchiveRestore,
 		LayoutList,
 		FolderOpen,
+		MessageCircle,
 	} from '@lucide/svelte';
 	import ChatMessage from '$lib/components/ChatMessage.svelte';
 	import { copyToClipboard } from '$lib/utils';
@@ -41,7 +43,7 @@
 	let activeMenuId = $state<string | null>(null);
 	let isArchiveView = $state(false);
 
-	// Group creation
+	// ui modal crap
 	let showGroupDialog = $state(false);
 	let groupTitle = $state('');
 	let groupEmails = $state('');
@@ -56,7 +58,8 @@
 	let hasPDF = $derived(messages.some(m => !!m.pdf_text));
 	let canGenerateQuiz = $derived(totalWords >= 50 || hasPDF);
 
-	// Auto-resize textarea
+	// auto resize the cursed textarea
+	// TODO: this breaks sometimes on ios Safari but whatever, deal with it later
 	$effect(() => {
 		if (textareaElement && inputValue !== undefined) {
 			textareaElement.style.height = 'auto';
@@ -83,8 +86,8 @@
 		try {
 			const data = await api.conversations.list(isArchiveView);
 			conversations = data.conversations;
-		} catch {
-			// ignore
+		} catch (err) {
+			console.error('Failed to load conversations:', err);
 		}
 	}
 
@@ -98,7 +101,7 @@
 		}
 	}
 
-	$effect(() => {
+	onMount(() => {
 		loadConversations();
 	});
 
@@ -214,7 +217,7 @@
 			}
 		}
 
-		// Optimistically add user message
+		// optimistically slap it in the ui so it feels fast
 		const tempUserMsg: Message = {
 			id: 'temp-' + Date.now(),
 			role: 'user',
@@ -239,7 +242,7 @@
 		}
 
 		const currentSearchEnabled = isSearchEnabled;
-		isSearchEnabled = false; // Reset after use
+		isSearchEnabled = false; // reset this so it doesn't get stuck open
 
 		let assistantMsg: Message = {
 			id: 'assistant-temp-' + Date.now(),
@@ -556,7 +559,7 @@
 				</h2>
 				<div class="flex items-center gap-1">
 					<button
-						onclick={() => isArchiveView = !isArchiveView}
+						onclick={() => { isArchiveView = !isArchiveView; loadConversations(); }}
 						class="p-1.5 rounded-lg hover:bg-white/5 {isArchiveView ? 'text-niva-accent' : 'text-niva-text-secondary'} transition-colors cursor-pointer"
 						title={isArchiveView ? 'Show Active' : 'Show Archived'}
 					>
@@ -649,8 +652,60 @@
 		</div>
 	</aside>
 
+	<!-- Mobile Conversation List (md:hidden) -->
+	<div class="flex-1 w-full md:hidden flex flex-col overflow-hidden {activeConversationId ? 'hidden' : ''}">
+		<div class="p-4 border-b border-niva-glass-border flex items-center justify-between">
+			<h2 class="text-sm font-semibold text-niva-text font-[Manrope]">
+				{isArchiveView ? 'Archived' : 'Recent Chats'}
+			</h2>
+			<div class="flex items-center gap-1">
+				<button
+					onclick={() => { isArchiveView = !isArchiveView; loadConversations(); }}
+					class="p-1.5 rounded-lg hover:bg-white/5 {isArchiveView ? 'text-niva-accent' : 'text-niva-text-secondary'} transition-colors cursor-pointer"
+					title={isArchiveView ? 'Show Active' : 'Show Archived'}
+				>
+					<Archive size={14} />
+				</button>
+				<button
+					onclick={() => showGroupDialog = true}
+					class="p-1.5 px-2.5 rounded-lg bg-niva-accent/10 border border-niva-accent/20 text-[10px] font-bold text-niva-accent hover:bg-niva-accent/20 transition-all cursor-pointer flex items-center gap-1"
+					title="New Group Chat"
+				>
+					<Users size={12} />
+					<span>+ GROUP</span>
+				</button>
+			</div>
+		</div>
+		<div class="flex-1 overflow-y-auto niva-scrollbar p-2 space-y-1 pb-20">
+			{#if conversations.length === 0}
+				<p class="text-xs text-niva-text-secondary p-3 text-center">No conversations yet</p>
+			{:else}
+				{#each conversations as conv (conv.id)}
+					<a
+						href={`/chat/${conv.id}`}
+						class="flex items-center gap-3 p-3 rounded-xl border border-transparent hover:bg-white/5 hover:border-niva-glass-border transition-all duration-200"
+					>
+						<div class="w-9 h-9 rounded-xl bg-niva-accent/10 flex items-center justify-center shrink-0">
+							{#if conv.is_group}
+								<Users size={16} class="text-niva-accent" />
+							{:else}
+								<MessageCircle size={16} class="text-niva-accent" />
+							{/if}
+						</div>
+						<div class="flex-1 min-w-0">
+							<p class="text-sm font-medium text-niva-text truncate">{conv.title}</p>
+							{#if conv.last_message}
+								<p class="text-xs text-niva-text-secondary truncate mt-0.5">{conv.last_message}</p>
+							{/if}
+						</div>
+					</a>
+				{/each}
+			{/if}
+		</div>
+	</div>
+
 	<!-- Chat Area -->
-	<div class="flex-1 flex flex-col h-full">
+	<div class="flex-1 flex flex-col h-full {!activeConversationId ? 'hidden md:flex' : ''}">
 		<!-- Top Bar -->
 		<header class="h-14 glass-panel-strong flex items-center justify-between px-6 shrink-0">
 			<div class="flex items-center gap-3">

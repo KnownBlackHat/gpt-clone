@@ -43,7 +43,7 @@ async function searchSerper(query) {
     );
     return response.data;
   } catch (err) {
-    console.error("Serper search error:", err);
+    console.error("serper died:", err);
     return null;
   }
 }
@@ -71,7 +71,7 @@ async function parsePdf(base64Data) {
       await instance.destroy();
     }
   } catch (err) {
-    console.error("PDF parse error:", err);
+    console.error("pdf parsing died:", err);
     return "Failed to read PDF content.";
   }
 }
@@ -106,7 +106,7 @@ router.get("/:conversationId/messages", async (req, res) => {
     );
     res.json({ messages: result.rows });
   } catch (err) {
-    console.error("Get messages error:", err);
+    console.error("failed getting msgs:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -357,7 +357,7 @@ INSTRUCTIONS:
       wasSearched: !!searchResults,
     });
   } catch (err) {
-    console.error("Groq API error:", err);
+    console.error("groq threw a fit:", err);
     if (!res.headersSent) {
       res.status(500).json({ error: "Failed to get AI response" });
     } else {

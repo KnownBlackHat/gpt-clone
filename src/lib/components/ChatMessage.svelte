@@ -188,7 +188,7 @@
 			<span class="text-[10px] font-bold text-niva-accent/70 uppercase tracking-widest mb-1 px-1">{message.username}</span>
 		{/if}
 		<div
-			class="md:px-5 px-4 md:py-3.5 py-3 rounded-2xl md:text-sm text-[13px] leading-relaxed transition-all duration-300 overflow-hidden break-words min-w-0 max-w-full
+			class="md:px-5 px-4 md:py-3.5 py-3 rounded-2xl md:text-sm text-[13px] leading-relaxed transition-all duration-300 break-words min-w-0 max-w-full
 				{message.role === 'user'
 					? 'bg-niva-accent text-niva-bg font-medium rounded-tr-none niva-glow-sm'
 					: 'glass-panel text-niva-text rounded-tl-none border border-white/5'}"
@@ -319,7 +319,6 @@
 		overflow-wrap: anywhere;
 		color: var(--niva-text);
 		max-width: 100%;
-		overflow-x: hidden;
 	}
 	
 	:global(.markdown-content table) {

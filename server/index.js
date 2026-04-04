@@ -28,27 +28,28 @@ app.use(cookieParser());
 
 
 // Routes
-// Public Share Route (MUST be before auth-guarded routes)
+		// Public Share Route (MUST be before auth-guarded routes)
+// lol this needs to be moved to its own file eventually but w/e
 app.get('/api/public/share/:shareId', async (req, res) => {
-    try {
-        const { shareId } = req.params;
-        const convResult = await pool.query(
-            'SELECT id, title, created_at FROM conversations WHERE share_id = $1',
-            [shareId]
-        );
-        if (convResult.rows.length === 0) {
-            return res.status(404).json({ error: 'Shared conversation not found' });
-        }
-        const conversation = convResult.rows[0];
-        const messagesResult = await pool.query(
-            'SELECT role, content, image_url, created_at FROM messages WHERE conversation_id = $1 ORDER BY created_at ASC',
-            [conversation.id]
-        );
-        res.json({ conversation, messages: messagesResult.rows });
-    } catch (err) {
-        console.error('Public share error:', err);
-        res.status(500).json({ error: 'Internal server error' });
-    }
+	try {
+		const { shareId } = req.params;
+		const convResult = await pool.query(
+			'SELECT id, title, created_at FROM conversations WHERE share_id = $1',
+			[shareId]
+		);
+		if (convResult.rows.length === 0) {
+			return res.status(404).json({ error: 'Shared conversation not found' });
+		}
+		const conversation = convResult.rows[0];
+		const messagesResult = await pool.query(
+			'SELECT role, content, image_url, created_at FROM messages WHERE conversation_id = $1 ORDER BY created_at ASC',
+			[conversation.id]
+		);
+		res.json({ conversation, messages: messagesResult.rows });
+	} catch (err) {
+		console.error('public route dead:', err);
+		res.status(500).json({ error: 'Internal server error' });
+	}
 });
 
 app.use('/api/auth', authRoutes);
@@ -114,15 +115,15 @@ async function runMigrations() {
             CREATE INDEX IF NOT EXISTS idx_quizzes_user_id ON quizzes(user_id);
         `);
 
-        console.log('✦ [DB] Migrations applied successfully');
-    } catch (err) {
-        console.error('✦ [DB] Migration warning:', err.message);
-    }
+		console.log('migrations done 👍');
+	} catch (err) {
+		console.error('migrations acting up again:', err.message);
+	}
 }
 
-// Start the server after migrations
+// boot it up
 runMigrations().then(() => {
-    app.listen(PORT, () => {
-        console.log(`✦ Niva API running on http://localhost:${PORT}`);
-    });
+	app.listen(PORT, () => {
+		console.log(`api up on ${PORT}`);
+	});
 });
